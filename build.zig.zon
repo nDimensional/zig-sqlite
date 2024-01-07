@@ -1,5 +1,5 @@
 .{
-    .paths = .{ "build.zig", "build.zig.zon", "README.md", "sqlite-amalgamation-3440200", "src" },
+    .paths = .{ "build.zig", "build.zig.zon", "README.md", "src" },
     .name = "zig-sqlite",
     .version = "0.1.0",
     .dependencies = .{
