@@ -76,7 +76,7 @@ Prepare statements using `Database.prepare`, and finalize them with `stmt.deinit
 
 ### Methods
 
-If the `Result` type is `void`, use the `Statement(Params, Result).exec(params: Params): !void` method to execute the statement several times with different params.
+If the `Result` type is `void`, use the `exec(params: Params): !void` method to execute the statement several times with different params.
 
 ```zig
 const User = struct { id: sqlite.Text, age: ?f32 };
@@ -93,7 +93,7 @@ try insert.exec(.{ .id = sqlite.text("b"), .age = null });
 
 ### Queries
 
-If the `Result` type is a struct, use `Statement(Params, Result).get(params: Params): !?Result` to get individual records.
+If the `Result` type is a struct, use `get(params: Params): !?Result` to get individual records.
 
 ```
 const select = try db.prepare(
