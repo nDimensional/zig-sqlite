@@ -3,7 +3,7 @@
     .name = "zig-sqlite",
     .version = "0.1.0",
     .dependencies = .{
-        .sqlite = .{
+        .sqlite_amalgamation = .{
             .url = "https://github.com/rhuijben/sqlite-amalgamation/archive/refs/tags/3.44.2.tar.gz",
             .hash = "12203423dd2b869deede7a85473fd1602d681623f4cf9b52b3a44978227e26b1e142",
         },

@@ -65,9 +65,9 @@ name: []const u8,
 type: Type,
 nullable: bool,
 
-pub fn parseFields(comptime fields: []const std.builtin.Type.StructField) [fields.len]Binding {
-    var bindings: [fields.len]Binding = undefined;
-    inline for (fields, 0..) |field, i| {
+pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.fields.len]Binding {
+    var bindings: [info.fields.len]Binding = undefined;
+    inline for (info.fields, 0..) |field, i| {
         bindings[i] = parseField(field);
     }
 
