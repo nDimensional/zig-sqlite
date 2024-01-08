@@ -154,9 +154,9 @@ Crafting sensible Zig bindings for SQLite involves making tradeoffs between foll
 This library takes the following approach:
 
 - `Database.deinit` calls `sqlite3_close_v2` and panics if it returns an error code.
-- `Statement.reset` and `Statement.deinit` will panic if `sqlite3_reset` or `sqlite3_finalize` return error codes, respectively.
+- `Statement.deinit` calls `sqlite3_finalize` and panics if it returns an error code.
 - `Statement.step` automatically calls `sqlite3_reset` if `sqlite3_step` returns an error code.
-  - In SQLite, `sqlite3_reset` returns the error code from the most recent call to `sqlite3_step`, if any. This is handled gracefully.
+  - In SQLite, `sqlite3_reset` returns the error code from the most recent call to `sqlite3_step`. This is handled gracefully.
 - `Statement.reset` calls both `sqlite3_reset` and `sqlite3_clear_bindings`, and panics if either return an error code.
 
 These should only result in panic through gross misuse or in extremely unusual situations, e.g. `sqlite3_reset` failing internally. All "normal" errors are faithfully surfaced as Zig errors.
