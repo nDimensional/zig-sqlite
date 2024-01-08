@@ -64,7 +64,7 @@ const sqlite = @import("sqlite");
 Execute one-off statements using `Database.exec`:
 
 ```zig
-try db.exec("CREATE TABLE users (id PRIMARY KEY, age FLOAT)", .{});
+try db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, age FLOAT)", .{});
 ```
 
 Prepare statements using `Database.prepare`, and finalize them with `stmt.deinit()`. Statements must be given explicit comptime params and result types and are typed as `sqlite.Statement(Params, Result)`.
