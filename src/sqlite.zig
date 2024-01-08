@@ -2,8 +2,17 @@ const std = @import("std");
 const c = @import("c.zig");
 const errors = @import("errors.zig");
 
+pub const Error = errors.Error;
 pub const Blob = struct { data: []const u8 };
 pub const Text = struct { data: []const u8 };
+
+pub fn blob(data: []const u8) Blob {
+    return .{ .data = data };
+}
+
+pub fn text(data: []const u8) Text {
+    return .{ .data = data };
+}
 
 pub const Database = struct {
     pub const Mode = enum { ReadWrite, ReadOnly };
@@ -261,12 +270,16 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             try errors.throw(c.sqlite3_bind_double(stmt.ptr, idx, value));
         }
 
-        fn bindBlob(stmt: Self, idx: c_int, value: []const u8) !void {
-            try errors.throw(c.sqlite3_bind_blob64(stmt.ptr, idx, value.ptr, @intCast(value.len), c.SQLITE_STATIC));
+        fn bindBlob(stmt: Self, idx: c_int, value: Blob) !void {
+            const ptr = value.data.ptr;
+            const len = value.data.len;
+            try errors.throw(c.sqlite3_bind_blob64(stmt.ptr, idx, ptr, @intCast(len), c.SQLITE_STATIC));
         }
 
-        fn bindText(stmt: Self, idx: c_int, value: []const u8) !void {
-            try errors.throw(c.sqlite3_bind_text64(stmt.ptr, idx, value.ptr, @intCast(value.len), c.SQLITE_STATIC, c.SQLITE_UTF8));
+        fn bindText(stmt: Self, idx: c_int, value: Text) !void {
+            const ptr = value.data.ptr;
+            const len = value.data.len;
+            try errors.throw(c.sqlite3_bind_text64(stmt.ptr, idx, ptr, @intCast(len), c.SQLITE_STATIC, c.SQLITE_UTF8));
         }
 
         fn row(stmt: Self) !Result {
@@ -274,6 +287,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
 
             inline for (column_bindings, 0..) |binding, i| {
                 const n = stmt.column_index_map[i];
+
                 switch (c.sqlite3_column_type(stmt.ptr, n)) {
                     c.SQLITE_NULL => if (binding.nullable) {
                         @field(result, binding.name) = null;
@@ -312,26 +326,17 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                     },
 
                     c.SQLITE_FLOAT => switch (binding.type) {
-                        .float64 => {
-                            const value = stmt.columnFloat64(n);
-                            @field(result, binding.name) = @floatCast(value);
-                        },
+                        .float64 => @field(result, binding.name) = @floatCast(stmt.columnFloat64(n)),
                         else => return error.InvalidColumnType,
                     },
 
                     c.SQLITE_BLOB => switch (binding.type) {
-                        .blob => {
-                            const data = stmt.columnBlob(n);
-                            @field(result, binding.name) = Blob{ .data = data };
-                        },
+                        .blob => @field(result, binding.name) = stmt.columnBlob(n),
                         else => return error.InvalidColumnType,
                     },
 
                     c.SQLITE_TEXT => switch (binding.type) {
-                        .text => {
-                            const data = stmt.columnText(n);
-                            @field(result, binding.name) = Text{ .data = data };
-                        },
+                        .text => @field(result, binding.name) = stmt.columnText(n),
                         else => return error.InvalidColumnType,
                     },
 
@@ -354,16 +359,24 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             return c.sqlite3_column_double(stmt.ptr, n);
         }
 
-        fn columnBlob(stmt: Self, n: c_int) []const u8 {
-            const ptr: [*]const u8 = @intCast(c.sqlite3_column_blob(stmt.ptr, n));
+        fn columnBlob(stmt: Self, n: c_int) Blob {
+            const ptr: [*]const u8 = @ptrCast(c.sqlite3_column_blob(stmt.ptr, n));
             const len = c.sqlite3_column_bytes(stmt.ptr, n);
-            return ptr[0..len];
+            if (len < 0) {
+                std.debug.panic("sqlite3_column_bytes: len < 0", .{});
+            }
+
+            return blob(ptr[0..@intCast(len)]);
         }
 
-        fn columnText(stmt: Self, n: c_int) []const u8 {
-            const ptr: [*]const u8 = @intCast(c.sqlite3_column_text(stmt.ptr, n));
+        fn columnText(stmt: Self, n: c_int) Text {
+            const ptr: [*]const u8 = @ptrCast(c.sqlite3_column_text(stmt.ptr, n));
             const len = c.sqlite3_column_bytes(stmt.ptr, n);
-            return ptr[0..len];
+            if (len < 0) {
+                std.debug.panic("sqlite3_column_bytes: len < 0", .{});
+            }
+
+            return text(ptr[0..@intCast(len)]);
         }
     };
 }

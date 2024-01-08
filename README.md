@@ -1,37 +1,164 @@
 # zig-sqlite
 
-## API
+Simple, low-level, explicitly-typed SQLite bindings for Zig.
 
-### Database
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Methods](#methods)
+  - [Queries](#queries)
+- [Notes](#notes)
+- [Build options](#build-options)
+- [License](#license)
+
+## Installation
+
+This library uses the new per-module compilation features introduced in `0.12.0-dev.2030+2ac315c24` (2023-01-03).
+
+Add the dependency to `build.zig.zon`:
 
 ```zig
-
-pub const Database = struct {
-    pub const Mode = enum { ReadWrite, ReadOnly };
-
-    pub const Options = struct {
-        path: ?[*:0]const u8 = null,
-        mode: Mode = .ReadWrite,
-        create: bool = true,
-    };
-
-    pub fn init(options: Options) !Database
-    pub fn deinit(db: Database) void
-
-    pub fn exec(db: Database, sql: []const u8, params: anytype) !void
-
-    pub fn prepare(
-        db: Database,
-        comptime Params: type,
-        comptime Result: type,
-        sql: []const u8,
-    ) !Statement
-};
+.{
+    .dependencies = .{
+        .sqlite = .{
+            .url = "https://github.com/nDimensional/zig-sqlite/archive/COMMIT.tar.gz",
+            .hash = "...",
+        },
+    },
+}
 ```
 
-### Statement
+Then add `sqlite` as an import to your root modules in `build.zig`:
 
-Statements are
+```zig
+fn build(b: *std.Build) void {
+    const app = b.addExecutable(.{ ... });
+    // ...
+
+    const sqlite = b.dependency("sqlite", .{});
+    app.root_module.addImport("sqlite", sqlite.module("sqlite"));
+}
+```
+
+## Usage
+
+Open databases using `Database.init` and close them with `db.deinit()`:
+
+```zig
+const sqlite = @import("sqlite");
+
+{
+    // in-memory database
+    const db = try sqlite.Database.init(.{});
+    defer db.deinit();
+}
+
+{
+    // persistent database
+    const db = try sqlite.Database.init(.{ .path = "path/to/db.sqlite" });
+    defer db.deinit();
+}
+```
+
+Execute one-off statements using `Database.exec`:
+
+```zig
+try db.exec("CREATE TABLE users (id PRIMARY KEY, age FLOAT)", .{});
+```
+
+Prepare statements using `Database.prepare`, and finalize them with `stmt.deinit()`. Statements must be given explicit comptime params and result types and are typed as `sqlite.Statement(Params, Result)`.
+
+```zig
+const User = struct { id: sqlite.Text, age: ?f32 };
+const insert = try db.prepare(
+    User,
+    void,
+    "INSERT INTO users VALUES (:id, :age)",
+);
+defer insert.deinit();
+
+try insert.exec(.{ .id = sqlite.text("a"), .age = 21 });
+try insert.exec(.{ .id = sqlite.text("b"), .age = null });
+```
+
+The comptime `Params` type must be a struct whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types. `Blob` and `Text` are wrapper structs with a single field `data: []const u8`.
+
+The comptime `Result` type must either be `void`, indicating a method that returns no data, or a struct of the same kind as param types, indicating a query that returns rows.
+
+### Methods
+
+If the `Result` type is `void`, use the `Statement(Params, Result).exec(params: Params): !void` method to execute the statement several times with different params.
+
+### Queries
+
+If the `Result` type is a struct, use `Statement(Params, Result).get(params: Params): !?Result` to get individual records.
+
+```
+const select = try db.prepare(
+    struct { id: sqlite.Text },
+    struct { age: ?f32 },
+    "SELECT age FROM users WHERE id = :id",
+);
+defer select.deinit();
+
+if (try select.get(.{ .id = sqlite.text("b") })) |user| {
+    std.log.info("age: {d}", .{ user.age });
+} else {
+    std.log.info("not found", .{});
+}
+```
+
+To iterate over all results, use `stmt.bind(params)` in conjunction with `defer stmt.reset()`, then `stmt.step()` over the results.
+
+> ℹ️ Every `bind` should be paired with a `reset`, just like every `init` is paired with a `deinit`.
+
+```zig
+const User = struct { id: sqlite.Text, age: ?f32 };
+const select = try db.prepare(
+    struct { min: f32 },
+    User,
+    "SELECT * FROM users WHERE age >= :min",
+);
+
+defer select.deinit();
+
+// Iterate over all rows
+{
+    try select.bind(.{ .min = 0 });
+    defer select.reset();
+
+    while (try select.step()) |user| {
+        std.log.info("{s} age: {d}", .{ user.id, user.age });
+    }
+}
+
+// Iterate again, with different params
+{
+    try select.bind(.{ .min = 21 });
+    defer select.reset();
+
+    while (try select.step()) |user| {
+        std.log.info("{s} age: {d}", .{ user.id, user.age });
+    }
+}
+```
+
+Text and blob values must not be retained across steps. **You are responsible for copying them.**
+
+## Notes
+
+Crafting sensible Zig bindings for SQLite involves making tradeoffs between following the Zig philosophy ("deallocation must succeed") and matching the SQLite API, in which closing databases or finalizing statements may return error codes.
+
+This library takes the following approach:
+
+- `Database.deinit` calls `sqlite3_close_v2` and panics if it returns an error code.
+- `Statement.reset` and `Statement.deinit` will panic if `sqlite3_reset` or `sqlite3_finalize` return error codes, respectively.
+- `Statement.step` automatically calls `sqlite3_reset` if `sqlite3_step` returns an error code.
+  - In SQLite, `sqlite3_reset` returns the error code from the most recent call to `sqlite3_step`, if any. This is handled gracefully.
+- `Statement.reset` calls both `sqlite3_reset` and `sqlite3_clear_bindings`, and panics if either return an error code.
+
+These should only result in panic through gross misuse or in extremely unusual situations, e.g. `sqlite3_reset` failing internally. All "normal" errors are faithfully surfaced as Zig errors.
 
 ## Build options
 
@@ -63,3 +190,7 @@ pub fn build(b: *std.Build) !void {
     const sqlite = b.dependency("sqlite", .{ .SQLITE_ENABLE_RTREE = true });
 }
 ```
+
+## License
+
+MIT © nDimensional Studios

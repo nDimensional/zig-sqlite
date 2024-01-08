@@ -10,35 +10,43 @@ test "open and close an in-memory database" {
 }
 
 test "insert" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const allocator = gpa.allocator();
-    _ = allocator;
-
     const db = try sqlite.Database.init(.{});
     defer db.deinit();
 
-    try db.exec("CREATE TABLE users(age FLOAT)", .{});
-    const User = struct { age: f32 };
+    try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
+    const User = struct { id: sqlite.Text, age: ?f32 };
 
     {
-        const insert = try db.prepare(User, void, "INSERT INTO users VALUES (:age)");
+        const insert = try db.prepare(User, void, "INSERT INTO users VALUES (:id, :age)");
         defer insert.deinit();
 
-        try insert.exec(.{ .age = 5 });
-        try insert.exec(.{ .age = 7 });
-        try insert.exec(.{ .age = 9 });
+        try insert.exec(.{ .id = sqlite.text("a"), .age = 5 });
+        try insert.exec(.{ .id = sqlite.text("b"), .age = 7 });
+        try insert.exec(.{ .id = sqlite.text("c"), .age = null });
     }
 
     {
-        const select = try db.prepare(struct {}, User, "SELECT age FROM users");
+        const select = try db.prepare(struct {}, User, "SELECT id, age FROM users");
         defer select.deinit();
 
         try select.bind(.{});
         defer select.reset();
-        try std.testing.expectEqual(@as(?User, .{ .age = 5 }), try select.step());
-        try std.testing.expectEqual(@as(?User, .{ .age = 7 }), try select.step());
-        try std.testing.expectEqual(@as(?User, .{ .age = 9 }), try select.step());
+
+        if (try select.step()) |user| {
+            try std.testing.expectEqualSlices(u8, "a", user.id.data);
+            try std.testing.expectEqual(@as(?f32, 5), user.age);
+        } else try std.testing.expect(false);
+
+        if (try select.step()) |user| {
+            try std.testing.expectEqualSlices(u8, "b", user.id.data);
+            try std.testing.expectEqual(@as(?f32, 7), user.age);
+        } else try std.testing.expect(false);
+
+        if (try select.step()) |user| {
+            try std.testing.expectEqualSlices(u8, "c", user.id.data);
+            try std.testing.expectEqual(@as(?f32, null), user.age);
+        } else try std.testing.expect(false);
+
         try std.testing.expectEqual(@as(?User, null), try select.step());
     }
 }
