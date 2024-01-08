@@ -69,6 +69,15 @@ try db.exec("CREATE TABLE users (id PRIMARY KEY, age FLOAT)", .{});
 
 Prepare statements using `Database.prepare`, and finalize them with `stmt.deinit()`. Statements must be given explicit comptime params and result types and are typed as `sqlite.Statement(Params, Result)`.
 
+- The comptime `Params` type must be a struct whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types.
+- The comptime `Result` type must either be `void`, indicating a method that returns no data, or a struct of the same kind as param types, indicating a query that returns rows.
+
+`Blob` and `Text` are wrapper structs with a single field `data: []const u8`.
+
+### Methods
+
+If the `Result` type is `void`, use the `Statement(Params, Result).exec(params: Params): !void` method to execute the statement several times with different params.
+
 ```zig
 const User = struct { id: sqlite.Text, age: ?f32 };
 const insert = try db.prepare(
@@ -81,14 +90,6 @@ defer insert.deinit();
 try insert.exec(.{ .id = sqlite.text("a"), .age = 21 });
 try insert.exec(.{ .id = sqlite.text("b"), .age = null });
 ```
-
-The comptime `Params` type must be a struct whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types. `Blob` and `Text` are wrapper structs with a single field `data: []const u8`.
-
-The comptime `Result` type must either be `void`, indicating a method that returns no data, or a struct of the same kind as param types, indicating a query that returns rows.
-
-### Methods
-
-If the `Result` type is `void`, use the `Statement(Params, Result).exec(params: Params): !void` method to execute the statement several times with different params.
 
 ### Queries
 
