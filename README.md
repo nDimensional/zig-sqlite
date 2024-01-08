@@ -95,7 +95,7 @@ try insert.exec(.{ .id = sqlite.text("b"), .age = null });
 
 If the `Result` type is a struct, use `get(params: Params): !?Result` to get individual records.
 
-```
+```zig
 const select = try db.prepare(
     struct { id: sqlite.Text },
     struct { age: ?f32 },
