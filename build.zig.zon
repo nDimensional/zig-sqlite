@@ -1,7 +1,7 @@
 .{
-    .paths = .{ "build.zig", "build.zig.zon", "README.md", "src" },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
     .name = "zig-sqlite",
-    .version = "0.1.0",
+    .version = "0.0.1",
     .dependencies = .{
         .sqlite_amalgamation = .{
             .url = "https://github.com/rhuijben/sqlite-amalgamation/archive/refs/tags/3.44.2.tar.gz",
