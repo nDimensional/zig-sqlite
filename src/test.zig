@@ -50,3 +50,29 @@ test "insert" {
         try std.testing.expectEqual(@as(?User, null), try select.step());
     }
 }
+
+test "count" {
+    const db = try sqlite.Database.init(.{});
+    defer db.deinit();
+
+    try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
+    try db.exec("INSERT INTO users VALUES(\"a\", 21)", .{});
+    try db.exec("INSERT INTO users VALUES(\"b\", 23)", .{});
+    try db.exec("INSERT INTO users VALUES(\"c\", NULL)", .{});
+
+    {
+        const Result = struct { age: f32 };
+        try std.testing.expectEqual(
+            @as(?Result, .{ .age = 21 }),
+            try db.get(Result, "SELECT age FROM users", .{}),
+        );
+    }
+
+    {
+        const Result = struct { count: usize };
+        try std.testing.expectEqual(
+            @as(?Result, .{ .count = 3 }),
+            try db.get(Result, "SELECT count(*) as count FROM users", .{}),
+        );
+    }
+}
