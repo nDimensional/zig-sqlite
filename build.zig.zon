@@ -1,7 +1,7 @@
 .{
     .paths = .{ "build.zig", "build.zig.zon", "src" },
     .name = "zig-sqlite",
-    .version = "0.0.1",
+    .version = "0.0.2",
     .dependencies = .{
         .sqlite_amalgamation = .{
             .url = "https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz",
