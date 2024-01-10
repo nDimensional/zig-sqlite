@@ -64,7 +64,7 @@ test "count" {
         const Result = struct { age: f32 };
         try std.testing.expectEqual(
             @as(?Result, .{ .age = 21 }),
-            try db.get(Result, "SELECT age FROM users", .{}),
+            try db.get(struct {}, Result, "SELECT age FROM users", .{}),
         );
     }
 
@@ -72,7 +72,7 @@ test "count" {
         const Result = struct { count: usize };
         try std.testing.expectEqual(
             @as(?Result, .{ .count = 3 }),
-            try db.get(Result, "SELECT count(*) as count FROM users", .{}),
+            try db.get(struct {}, Result, "SELECT count(*) as count FROM users", .{}),
         );
     }
 }

@@ -64,8 +64,8 @@ pub const Database = struct {
         try stmt.exec(params);
     }
 
-    pub fn get(db: Database, comptime Result: type, sql: []const u8, params: anytype) !?Result {
-        const stmt = try Statement(@TypeOf(params), Result).init(db, sql);
+    pub fn get(db: Database, comptime Params: type, comptime Result: type, sql: []const u8, params: Params) !?Result {
+        const stmt = try Statement(Params, Result).init(db, sql);
         defer stmt.deinit();
 
         return try stmt.get(params);

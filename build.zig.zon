@@ -4,8 +4,8 @@
     .version = "0.0.1",
     .dependencies = .{
         .sqlite_amalgamation = .{
-            .url = "https://github.com/rhuijben/sqlite-amalgamation/archive/refs/tags/3.44.2.tar.gz",
-            .hash = "12203423dd2b869deede7a85473fd1602d681623f4cf9b52b3a44978227e26b1e142",
+            .url = "https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz",
+            .hash = "1220808ebe54c856e5e024c42eb97eafc0844f617d47e9e6df11eb2fb881cff071fe",
         },
     },
 }
