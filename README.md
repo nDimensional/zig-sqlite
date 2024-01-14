@@ -113,7 +113,9 @@ defer select.deinit();
     defer select.reset();
 
     if (try select.step()) |user| {
-        std.log.info("{s} age: {d}", .{ user.id, user.age });
+        // user.id: sqlite.Text
+        // user.age: ?f32
+        std.log.info("id: {s}, age: {d}", .{ user.id.data, user.age orelse 0 });
     }
 }
 
@@ -123,7 +125,7 @@ defer select.deinit();
     defer select.reset();
 
     while (try select.step()) |user| {
-        std.log.info("{s} age: {d}", .{ user.id, user.age });
+        std.log.info("id: {s}, age: {d}", .{ user.id.data, user.age orelse 0 });
     }
 }
 
@@ -133,7 +135,7 @@ defer select.deinit();
     defer select.reset();
 
     while (try select.step()) |user| {
-        std.log.info("{s} age: {d}", .{ user.id, user.age });
+        std.log.info("id: {s}, age: {d}", .{ user.id.data, user.age orelse 0 });
     }
 }
 ```
