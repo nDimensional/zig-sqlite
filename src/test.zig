@@ -62,17 +62,23 @@ test "count" {
 
     {
         const Result = struct { age: f32 };
-        try std.testing.expectEqual(
-            @as(?Result, .{ .age = 21 }),
-            try db.get(struct {}, Result, "SELECT age FROM users", .{}),
-        );
+        const select = try db.prepare(struct {}, Result, "SELECT age FROM users");
+        defer select.deinit();
+
+        try select.bind(.{});
+        defer select.reset();
+
+        try std.testing.expectEqual(@as(?Result, .{ .age = 21 }), try select.step());
     }
 
     {
         const Result = struct { count: usize };
-        try std.testing.expectEqual(
-            @as(?Result, .{ .count = 3 }),
-            try db.get(struct {}, Result, "SELECT count(*) as count FROM users", .{}),
-        );
+        const select = try db.prepare(struct {}, Result, "SELECT count(*) as count FROM users");
+        defer select.deinit();
+
+        try select.bind(.{});
+        defer select.reset();
+
+        try std.testing.expectEqual(@as(?Result, .{ .count = 3 }), try select.step());
     }
 }

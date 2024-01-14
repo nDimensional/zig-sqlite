@@ -93,24 +93,7 @@ try insert.exec(.{ .id = sqlite.text("b"), .age = null });
 
 ### Queries
 
-If the `Result` type is a struct, use `get(params: Params): !?Result` to get individual records.
-
-```zig
-const select = try db.prepare(
-    struct { id: sqlite.Text },
-    struct { age: ?f32 },
-    "SELECT age FROM users WHERE id = :id",
-);
-defer select.deinit();
-
-if (try select.get(.{ .id = sqlite.text("b") })) |user| {
-    std.log.info("age: {d}", .{ user.age });
-} else {
-    std.log.info("not found", .{});
-}
-```
-
-To iterate over all results, use `stmt.bind(params)` in conjunction with `defer stmt.reset()`, then `stmt.step()` over the results.
+If the `Result` type is a struct, use `stmt.bind(params)` in conjunction with `defer stmt.reset()`, then `stmt.step()` over the results.
 
 > ℹ️ Every `bind` should be paired with a `reset`, just like every `init` is paired with a `deinit`.
 

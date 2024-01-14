@@ -63,13 +63,6 @@ pub const Database = struct {
 
         try stmt.exec(params);
     }
-
-    pub fn get(db: Database, comptime Params: type, comptime Result: type, sql: []const u8, params: Params) !?Result {
-        const stmt = try Statement(Params, Result).init(db, sql);
-        defer stmt.deinit();
-
-        return try stmt.get(params);
-    }
 };
 
 pub fn Statement(comptime Params: type, comptime Result: type) type {
@@ -202,17 +195,6 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             try stmt.bind(params);
             defer stmt.reset();
             try stmt.step() orelse {};
-        }
-
-        pub fn get(stmt: Self, params: Params) !?Result {
-            switch (@typeInfo(Result)) {
-                .Struct => {},
-                else => @compileError("only struct Result types can call .get"),
-            }
-
-            try stmt.bind(params);
-            defer stmt.reset();
-            return try stmt.step();
         }
 
         pub fn step(stmt: Self) !?Result {
