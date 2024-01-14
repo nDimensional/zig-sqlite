@@ -22,8 +22,8 @@ Add the dependency to `build.zig.zon`:
 .{
     .dependencies = .{
         .sqlite = .{
-            .url = "https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.0.2.tar.gz",
-            .hash = "1220915e2ec976233b79c9ba4f56ff5220b428482eabae172b5eb5135f069fdad502",
+            .url = "https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.0.3.tar.gz",
+            .hash = "1220fc48d43fb4024ce19ae3790e05a599d319d7997983fff1c38a5a8080a73a1138",
         },
     },
 }
@@ -106,6 +106,16 @@ const select = try db.prepare(
 );
 
 defer select.deinit();
+
+// Get a single row
+{
+    try select.bind(.{ .min = 0 });
+    defer select.reset();
+
+    if (try select.step()) |user| {
+        std.log.info("{s} age: {d}", .{ user.id, user.age });
+    }
+}
 
 // Iterate over all rows
 {
