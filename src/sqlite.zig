@@ -380,8 +380,8 @@ const Binding = struct {
 
         pub fn parse(comptime T: type) Type {
             return switch (T) {
-                //Blob => .{ .blob = {} },
-                Text => .{ .text = {} },
+                Blob => .{ .blob = {} },
+                //Text => .{ .text = {} },
                 else => switch (@typeInfo(T)) {
                     .Int => |info| switch (info.signedness) {
                         .signed => if (info.bits <= 32) .{ .int32 = info } else .{ .int64 = info },
@@ -403,8 +403,8 @@ const Binding = struct {
 
         pub fn parse(comptime T: type) Kind {
             return switch (T) {
-                //Blob => .blob,
-                Text => .text,
+                Blob => .blob,
+                //Text => .text,
                 else => switch (@typeInfo(T)) {
                     .Int => |info| switch (info.signedness) {
                         .signed => if (info.bits <= 32) .int32 else .int64,
