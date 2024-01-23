@@ -3,16 +3,8 @@ const c = @import("c.zig");
 const errors = @import("errors.zig");
 
 pub const Error = errors.Error;
-pub const Blob = struct { data: []const u8 };
-pub const Text = struct { data: []const u8 };
-
-pub fn blob(data: []const u8) Blob {
-    return .{ .data = data };
-}
-
-pub fn text(data: []const u8) Text {
-    return .{ .data = data };
-}
+pub const Blob = []const u8;
+pub const Text = []const u8;
 
 pub const Database = struct {
     pub const Mode = enum { ReadWrite, ReadOnly };
@@ -260,14 +252,14 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
         }
 
         fn bindBlob(stmt: Self, idx: c_int, value: Blob) !void {
-            const ptr = value.data.ptr;
-            const len = value.data.len;
+            const ptr = value.ptr;
+            const len = value.len;
             try errors.throw(c.sqlite3_bind_blob64(stmt.ptr, idx, ptr, @intCast(len), c.SQLITE_STATIC));
         }
 
         fn bindText(stmt: Self, idx: c_int, value: Text) !void {
-            const ptr = value.data.ptr;
-            const len = value.data.len;
+            const ptr = value.ptr;
+            const len = value.len;
             try errors.throw(c.sqlite3_bind_text64(stmt.ptr, idx, ptr, @intCast(len), c.SQLITE_STATIC, c.SQLITE_UTF8));
         }
 
@@ -355,7 +347,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                 std.debug.panic("sqlite3_column_bytes: len < 0", .{});
             }
 
-            return blob(ptr[0..@intCast(len)]);
+            return ptr[0..@intCast(len)];
         }
 
         fn columnText(stmt: Self, n: c_int) Text {
@@ -365,7 +357,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                 std.debug.panic("sqlite3_column_bytes: len < 0", .{});
             }
 
-            return text(ptr[0..@intCast(len)]);
+            return ptr[0..@intCast(len)];
         }
     };
 }
@@ -388,7 +380,7 @@ const Binding = struct {
 
         pub fn parse(comptime T: type) Type {
             return switch (T) {
-                Blob => .{ .blob = {} },
+                //Blob => .{ .blob = {} },
                 Text => .{ .text = {} },
                 else => switch (@typeInfo(T)) {
                     .Int => |info| switch (info.signedness) {
@@ -411,7 +403,7 @@ const Binding = struct {
 
         pub fn parse(comptime T: type) Kind {
             return switch (T) {
-                Blob => .blob,
+                //Blob => .blob,
                 Text => .text,
                 else => switch (@typeInfo(T)) {
                     .Int => |info| switch (info.signedness) {
