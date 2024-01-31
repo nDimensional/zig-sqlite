@@ -251,7 +251,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             try errors.throw(c.sqlite3_bind_int(stmt.ptr, idx, value));
         }
 
-        fn bindInt64(stmt: Self, idx: c_int, value: i32) !void {
+        fn bindInt64(stmt: Self, idx: c_int, value: i64) !void {
             try errors.throw(c.sqlite3_bind_int64(stmt.ptr, idx, value));
         }
 
