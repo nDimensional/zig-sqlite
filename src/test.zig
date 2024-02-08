@@ -140,3 +140,51 @@ test "example" {
         }
     }
 }
+
+test "deserialize" {
+    const allocator = std.heap.c_allocator;
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const db1 = try open(allocator, tmp.dir, "db.sqlite");
+    defer db1.deinit();
+
+    try db1.exec("CREATE TABLE users (id INTEGER PRIMARY KEY)", .{});
+    try db1.exec("INSERT INTO users VALUES (:id)", .{ .id = @as(usize, 0) });
+    try db1.exec("INSERT INTO users VALUES (:id)", .{ .id = @as(usize, 1) });
+
+    const file = try tmp.dir.openFile("db.sqlite", .{});
+    defer file.close();
+
+    const data = try file.readToEndAlloc(allocator, 4096 * 8);
+    defer allocator.free(data);
+
+    const db2 = try sqlite.Database.import(data);
+    defer db2.deinit();
+
+    const User = struct { id: usize };
+    var rows = std.ArrayList(User).init(allocator);
+    defer rows.deinit();
+
+    const stmt = try db2.prepare(struct {}, User, "SELECT id FROM users");
+    defer stmt.deinit();
+
+    try stmt.bind(.{});
+    defer stmt.reset();
+    while (try stmt.step()) |row| {
+        try rows.append(row);
+    }
+
+    try std.testing.expectEqualSlices(User, &.{ .{ .id = 0 }, .{ .id = 1 } }, rows.items);
+}
+
+fn open(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) !sqlite.Database {
+    const path_dir = try dir.realpathAlloc(allocator, ".");
+    defer allocator.free(path_dir);
+
+    const path_file = try std.fs.path.joinZ(allocator, &.{ path_dir, name });
+    defer allocator.free(path_file);
+
+    return try sqlite.Database.init(.{ .path = path_file });
+}

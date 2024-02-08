@@ -46,6 +46,16 @@ pub const Database = struct {
         return .{ .ptr = ptr };
     }
 
+    /// Must not be in WAL mode. Returns a read-only in-memory database.
+    pub fn import(data: []const u8) !Database {
+        const db = try Database.init(.{ .mode = .ReadOnly });
+        const ptr: [*]u8 = @constCast(data.ptr);
+        const len: c_longlong = @intCast(data.len);
+        const flags = c.SQLITE_DESERIALIZE_READONLY;
+        try errors.throw(c.sqlite3_deserialize(db.ptr, "main", ptr, len, len, flags));
+        return db;
+    }
+
     pub fn deinit(db: Database) void {
         errors.throw(c.sqlite3_close_v2(db.ptr)) catch |err| {
             const msg = c.sqlite3_errmsg(db.ptr);
