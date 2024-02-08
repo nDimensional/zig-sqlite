@@ -1,11 +1,11 @@
 .{
     .paths = .{ "build.zig", "build.zig.zon", "src" },
     .name = "zig-sqlite",
-    .version = "0.0.2",
+    .version = "0.0.3",
     .dependencies = .{
         .sqlite_amalgamation = .{
-            .url = "https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz",
-            .hash = "1220808ebe54c856e5e024c42eb97eafc0844f617d47e9e6df11eb2fb881cff071fe",
+            .url = "https://www.sqlite.org/2024/sqlite-autoconf-3450100.tar.gz",
+            .hash = "1220e93e5a9a2a54fbb195d65db308d4bc9f4646c2cfa4cf4f3248dad5ad344c3e56",
         },
     },
 }
