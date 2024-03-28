@@ -5,20 +5,20 @@ const errors = @import("errors.zig");
 const sqlite = @import("sqlite.zig");
 
 test "open and close an in-memory database" {
-    const db = try sqlite.Database.init(.{});
-    defer db.deinit();
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
 }
 
 test "insert" {
-    const db = try sqlite.Database.init(.{});
-    defer db.deinit();
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
 
     try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
     const User = struct { id: sqlite.Text, age: ?f32 };
 
     {
         const insert = try db.prepare(User, void, "INSERT INTO users VALUES (:id, :age)");
-        defer insert.deinit();
+        defer insert.finalize();
 
         try insert.exec(.{ .id = sqlite.text("a"), .age = 5 });
         try insert.exec(.{ .id = sqlite.text("b"), .age = 7 });
@@ -27,7 +27,7 @@ test "insert" {
 
     {
         const select = try db.prepare(struct {}, User, "SELECT id, age FROM users");
-        defer select.deinit();
+        defer select.finalize();
 
         try select.bind(.{});
         defer select.reset();
@@ -52,8 +52,8 @@ test "insert" {
 }
 
 test "count" {
-    const db = try sqlite.Database.init(.{});
-    defer db.deinit();
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
 
     try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
     try db.exec("INSERT INTO users VALUES(\"a\", 21)", .{});
@@ -63,7 +63,7 @@ test "count" {
     {
         const Result = struct { age: f32 };
         const select = try db.prepare(struct {}, Result, "SELECT age FROM users");
-        defer select.deinit();
+        defer select.finalize();
 
         try select.bind(.{});
         defer select.reset();
@@ -74,7 +74,7 @@ test "count" {
     {
         const Result = struct { count: usize };
         const select = try db.prepare(struct {}, Result, "SELECT count(*) as count FROM users");
-        defer select.deinit();
+        defer select.finalize();
 
         try select.bind(.{});
         defer select.reset();
@@ -84,8 +84,8 @@ test "count" {
 }
 
 test "example" {
-    const db = try sqlite.Database.init(.{});
-    defer db.deinit();
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
 
     try db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, age FLOAT)", .{});
 
@@ -95,7 +95,7 @@ test "example" {
         void,
         "INSERT INTO users VALUES (:id, :age)",
     );
-    defer insert.deinit();
+    defer insert.finalize();
 
     try insert.exec(.{ .id = sqlite.text("a"), .age = 21 });
     try insert.exec(.{ .id = sqlite.text("b"), .age = null });
@@ -106,7 +106,7 @@ test "example" {
         "SELECT * FROM users WHERE age >= :min",
     );
 
-    defer select.deinit();
+    defer select.finalize();
 
     // Get a single row
     {
@@ -148,7 +148,7 @@ test "deserialize" {
     defer tmp.cleanup();
 
     const db1 = try open(allocator, tmp.dir, "db.sqlite");
-    defer db1.deinit();
+    defer db1.close();
 
     try db1.exec("CREATE TABLE users (id INTEGER PRIMARY KEY)", .{});
     try db1.exec("INSERT INTO users VALUES (:id)", .{ .id = @as(usize, 0) });
@@ -161,14 +161,14 @@ test "deserialize" {
     defer allocator.free(data);
 
     const db2 = try sqlite.Database.import(data);
-    defer db2.deinit();
+    defer db2.close();
 
     const User = struct { id: usize };
     var rows = std.ArrayList(User).init(allocator);
     defer rows.deinit();
 
     const stmt = try db2.prepare(struct {}, User, "SELECT id FROM users");
-    defer stmt.deinit();
+    defer stmt.finalize();
 
     try stmt.bind(.{});
     defer stmt.reset();
@@ -186,5 +186,5 @@ fn open(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) !sqlite
     const path_file = try std.fs.path.joinZ(allocator, &.{ path_dir, name });
     defer allocator.free(path_file);
 
-    return try sqlite.Database.init(.{ .path = path_file });
+    return try sqlite.Database.open(.{ .path = path_file });
 }

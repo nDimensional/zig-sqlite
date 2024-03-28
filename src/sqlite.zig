@@ -25,7 +25,7 @@ pub const Database = struct {
 
     ptr: ?*c.sqlite3,
 
-    pub fn init(options: Options) !Database {
+    pub fn open(options: Options) !Database {
         var ptr: ?*c.sqlite3 = null;
 
         var flags: c_int = 0;
@@ -48,7 +48,7 @@ pub const Database = struct {
 
     /// Must not be in WAL mode. Returns a read-only in-memory database.
     pub fn import(data: []const u8) !Database {
-        const db = try Database.init(.{ .mode = .ReadOnly });
+        const db = try Database.open(.{ .mode = .ReadOnly });
         const ptr: [*]u8 = @constCast(data.ptr);
         const len: c_longlong = @intCast(data.len);
         const flags = c.SQLITE_DESERIALIZE_READONLY;
@@ -56,7 +56,7 @@ pub const Database = struct {
         return db;
     }
 
-    pub fn deinit(db: Database) void {
+    pub fn close(db: Database) void {
         errors.throw(c.sqlite3_close_v2(db.ptr)) catch |err| {
             const msg = c.sqlite3_errmsg(db.ptr);
             std.debug.panic("sqlite3_close_v2: {s} {s}", .{ @errorName(err), msg });
@@ -64,12 +64,12 @@ pub const Database = struct {
     }
 
     pub fn prepare(db: Database, comptime Params: type, comptime Result: type, sql: []const u8) !Statement(Params, Result) {
-        return try Statement(Params, Result).init(db, sql);
+        return try Statement(Params, Result).prepare(db, sql);
     }
 
     pub fn exec(db: Database, sql: []const u8, params: anytype) !void {
-        const stmt = try Statement(@TypeOf(params), void).init(db, sql);
-        defer stmt.deinit();
+        const stmt = try Statement(@TypeOf(params), void).prepare(db, sql);
+        defer stmt.finalize();
 
         try stmt.exec(params);
     }
@@ -98,7 +98,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
         param_index_map: [param_count]c_int = .{placeholder} ** param_count,
         column_index_map: [column_count]c_int = .{placeholder} ** column_count,
 
-        pub fn init(db: Database, sql: []const u8) !Self {
+        pub fn prepare(db: Database, sql: []const u8) !Self {
             var stmt = Self{};
 
             try errors.throw(c.sqlite3_prepare_v2(db.ptr, sql.ptr, @intCast(sql.len), &stmt.ptr, null));
@@ -176,7 +176,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             return stmt;
         }
 
-        pub fn deinit(stmt: Self) void {
+        pub fn finalize(stmt: Self) void {
             errors.throw(c.sqlite3_finalize(stmt.ptr)) catch |err| {
                 const db = c.sqlite3_db_handle(stmt.ptr);
                 const msg = c.sqlite3_errmsg(db);

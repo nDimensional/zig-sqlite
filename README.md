@@ -43,21 +43,21 @@ fn build(b: *std.Build) void {
 
 ## Usage
 
-Open databases using `Database.init` and close them with `db.deinit()`:
+Open databases using `Database.open` and close them with `db.close()`:
 
 ```zig
 const sqlite = @import("sqlite");
 
 {
     // in-memory database
-    const db = try sqlite.Database.init(.{});
-    defer db.deinit();
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
 }
 
 {
     // persistent database
-    const db = try sqlite.Database.init(.{ .path = "path/to/db.sqlite" });
-    defer db.deinit();
+    const db = try sqlite.Database.open(.{ .path = "path/to/db.sqlite" });
+    defer db.close();
 }
 ```
 
@@ -67,7 +67,7 @@ Execute one-off statements using `Database.exec`:
 try db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, age FLOAT)", .{});
 ```
 
-Prepare statements using `Database.prepare`, and finalize them with `stmt.deinit()`. Statements must be given explicit comptime params and result types and are typed as `sqlite.Statement(Params, Result)`.
+Prepare statements using `Database.prepare`, and finalize them with `stmt.finalize()`. Statements must be given explicit comptime params and result types and are typed as `sqlite.Statement(Params, Result)`.
 
 - The comptime `Params` type must be a struct whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types.
 - The comptime `Result` type must either be `void`, indicating a method that returns no data, or a struct of the same kind as param types, indicating a query that returns rows.
@@ -85,7 +85,7 @@ const insert = try db.prepare(
     void,
     "INSERT INTO users VALUES (:id, :age)",
 );
-defer insert.deinit();
+defer insert.finalize();
 
 try insert.exec(.{ .id = sqlite.text("a"), .age = 21 });
 try insert.exec(.{ .id = sqlite.text("b"), .age = null });
@@ -95,7 +95,7 @@ try insert.exec(.{ .id = sqlite.text("b"), .age = null });
 
 If the `Result` type is a struct, use `stmt.bind(params)` in conjunction with `defer stmt.reset()`, then `stmt.step()` over the results.
 
-> ℹ️ Every `bind` should be paired with a `reset`, just like every `init` is paired with a `deinit`.
+> ℹ️ Every `bind` should be paired with a `reset`, just like every `prepare` is paired with a `finalize`.
 
 ```zig
 const User = struct { id: sqlite.Text, age: ?f32 };
@@ -105,7 +105,7 @@ const select = try db.prepare(
     "SELECT * FROM users WHERE age >= :min",
 );
 
-defer select.deinit();
+defer select.finalize();
 
 // Get a single row
 {
@@ -148,8 +148,8 @@ Crafting sensible Zig bindings for SQLite involves making tradeoffs between foll
 
 This library takes the following approach:
 
-- `Database.deinit` calls `sqlite3_close_v2` and panics if it returns an error code.
-- `Statement.deinit` calls `sqlite3_finalize` and panics if it returns an error code.
+- `Database.close` calls `sqlite3_close_v2` and panics if it returns an error code.
+- `Statement.finalize` calls `sqlite3_finalize` and panics if it returns an error code.
 - `Statement.step` automatically calls `sqlite3_reset` if `sqlite3_step` returns an error code.
   - In SQLite, `sqlite3_reset` returns the error code from the most recent call to `sqlite3_step`. This is handled gracefully.
 - `Statement.reset` calls both `sqlite3_reset` and `sqlite3_clear_bindings`, and panics if either return an error code.
