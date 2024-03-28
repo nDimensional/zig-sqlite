@@ -67,12 +67,12 @@ Execute one-off statements using `Database.exec`:
 try db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, age FLOAT)", .{});
 ```
 
-Prepare statements using `Database.prepare`, and finalize them with `stmt.finalize()`. Statements must be given explicit comptime params and result types and are typed as `sqlite.Statement(Params, Result)`.
+Prepare statements using `Database.prepare`, and finalize them with `stmt.finalize()`. Statements must be given explicit comptime params and result types, and are typed as `sqlite.Statement(Params, Result)`.
 
 - The comptime `Params` type must be a struct whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types.
 - The comptime `Result` type must either be `void`, indicating a method that returns no data, or a struct of the same kind as param types, indicating a query that returns rows.
 
-`Blob` and `Text` are wrapper structs with a single field `data: []const u8`.
+`sqlite.Blob` and `sqlite.Text` are wrapper structs with a single field `data: []const u8`.
 
 ### Methods
 
@@ -80,11 +80,7 @@ If the `Result` type is `void`, use the `exec(params: Params): !void` method to 
 
 ```zig
 const User = struct { id: sqlite.Text, age: ?f32 };
-const insert = try db.prepare(
-    User,
-    void,
-    "INSERT INTO users VALUES (:id, :age)",
-);
+const insert = try db.prepare(User, void, "INSERT INTO users VALUES (:id, :age)");
 defer insert.finalize();
 
 try insert.exec(.{ .id = sqlite.text("a"), .age = 21 });
