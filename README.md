@@ -22,8 +22,8 @@ Add the dependency to `build.zig.zon`:
 .{
     .dependencies = .{
         .sqlite = .{
-            .url = "https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.0.5.tar.gz",
-            .hash = "12202bf2ce3457dc16f5ee146677efff040f236f3420bd82c22197912d6261c6f387",
+            .url = "https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.0.6.tar.gz",
+            // .hash = "",
         },
     },
 }
