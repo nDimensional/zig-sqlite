@@ -14,7 +14,7 @@ Simple, low-level, explicitly-typed SQLite bindings for Zig.
 
 ## Installation
 
-This library uses the new per-module compilation features and requires Zig version `0.12.0-dev.2127+fcc0c5ddc` (2023-01-10) or later.
+This library uses the new per-module compilation features and requires Zig version `0.12.0` or later.
 
 Add the dependency to `build.zig.zon`:
 

@@ -1,5 +1,4 @@
 const std = @import("std");
-const LazyPath = std.Build.LazyPath;
 
 pub fn build(b: *std.Build) void {
     var flags = std.ArrayList([]const u8).init(b.allocator);
@@ -60,14 +59,14 @@ pub fn build(b: *std.Build) void {
         flags.append("-DSQLITE_USE_URI") catch @panic("OOM");
     }
 
-    const sqlite = b.addModule("sqlite", .{ .root_source_file = LazyPath.relative("src/sqlite.zig") });
+    const sqlite = b.addModule("sqlite", .{ .root_source_file = b.path("src/sqlite.zig") });
     const sqlite_amalgamation = b.dependency("sqlite_amalgamation", .{});
 
     sqlite.addIncludePath(sqlite_amalgamation.path("."));
     sqlite.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
 
     // Tests
-    const tests = b.addTest(.{ .root_source_file = LazyPath.relative("src/test.zig") });
+    const tests = b.addTest(.{ .root_source_file = b.path("src/test.zig") });
     tests.addIncludePath(sqlite_amalgamation.path("."));
     tests.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
 
