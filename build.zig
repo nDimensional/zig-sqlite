@@ -3,6 +3,13 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     var flags = std.ArrayList([]const u8).init(b.allocator);
 
+    switch (b.option(u8, "SQLITE_THREADSAFE", "SQLITE_THREADSAFE") orelse 1) {
+        0 => flags.append("-DSQLITE_THREADSAFE=0") catch @panic("OOM"),
+        1 => flags.append("-DSQLITE_THREADSAFE=1") catch @panic("OOM"),
+        2 => flags.append("-DSQLITE_THREADSAFE=2") catch @panic("OOM"),
+        else => @panic("SQLITE_THREADSAFE: expected 0, 1, or 2"),
+    }
+
     if (b.option(bool, "SQLITE_ENABLE_COLUMN_METADATA", "SQLITE_ENABLE_COLUMN_METADATA") orelse false) {
         flags.append("-DSQLITE_ENABLE_COLUMN_METADATA") catch @panic("OOM");
     }
