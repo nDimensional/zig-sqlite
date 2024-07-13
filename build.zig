@@ -3,11 +3,11 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     var flags = std.ArrayList([]const u8).init(b.allocator);
 
-    switch (b.option(u8, "SQLITE_THREADSAFE", "SQLITE_THREADSAFE") orelse 1) {
-        0 => flags.append("-DSQLITE_THREADSAFE=0") catch @panic("OOM"),
-        1 => flags.append("-DSQLITE_THREADSAFE=1") catch @panic("OOM"),
-        2 => flags.append("-DSQLITE_THREADSAFE=2") catch @panic("OOM"),
-        else => @panic("SQLITE_THREADSAFE: expected 0, 1, or 2"),
+    const THREADSAFE = enum { SINGLETHREAD, MULTITHREAD, SERIALIZED };
+    switch (b.option(THREADSAFE, "SQLITE_THREADSAFE", "SQLITE_THREADSAFE") orelse .SERIALIZED) {
+        .SINGLETHREAD => flags.append("-DSQLITE_THREADSAFE=0") catch @panic("OOM"),
+        .SERIALIZED => flags.append("-DSQLITE_THREADSAFE=1") catch @panic("OOM"),
+        .MULTITHREAD => flags.append("-DSQLITE_THREADSAFE=2") catch @panic("OOM"),
     }
 
     if (b.option(bool, "SQLITE_ENABLE_COLUMN_METADATA", "SQLITE_ENABLE_COLUMN_METADATA") orelse false) {
@@ -80,4 +80,20 @@ pub fn build(b: *std.Build) void {
     const run_tests = b.addRunArtifact(tests);
 
     b.step("test", "Run tests").dependOn(&run_tests.step);
+
+    // FJKDLSJFKLJKDLJFKLSDJKLJ
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+    const db_test = b.addExecutable(.{
+        .name = "db-test",
+        .root_source_file = b.path("./main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    db_test.root_module.addImport("sqlite", sqlite);
+
+    const db_test_artifact = b.addRunArtifact(db_test);
+    const run_db_test = b.step("db-test", "Run the SQLite database test");
+    run_db_test.dependOn(&db_test_artifact.step);
 }
