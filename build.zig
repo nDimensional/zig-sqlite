@@ -80,20 +80,4 @@ pub fn build(b: *std.Build) void {
     const run_tests = b.addRunArtifact(tests);
 
     b.step("test", "Run tests").dependOn(&run_tests.step);
-
-    // FJKDLSJFKLJKDLJFKLSDJKLJ
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
-    const db_test = b.addExecutable(.{
-        .name = "db-test",
-        .root_source_file = b.path("./main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    db_test.root_module.addImport("sqlite", sqlite);
-
-    const db_test_artifact = b.addRunArtifact(db_test);
-    const run_db_test = b.step("db-test", "Run the SQLite database test");
-    run_db_test.dependOn(&db_test_artifact.step);
 }
