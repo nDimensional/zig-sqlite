@@ -127,7 +127,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                     }
 
                     inline for (param_bindings, 0..) |binding, i| {
-                        if (std.mem.eql(u8, binding.name, name[1..])) {
+                        if (std.mem.eql(u8, binding.field.name, name[1..])) {
                             if (stmt.param_index_map[i] == placeholder) {
                                 stmt.param_index_map[i] = idx;
                                 continue :params;
@@ -155,7 +155,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                     const name = std.mem.span(column_name);
 
                     inline for (column_bindings, 0..) |binding, i| {
-                        if (std.mem.eql(u8, binding.name, name)) {
+                        if (std.mem.eql(u8, binding.field.name, name)) {
                             if (stmt.column_index_map[i] == placeholder) {
                                 stmt.column_index_map[i] = n;
                                 continue :columns;
@@ -166,11 +166,17 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                     }
                 }
 
-                for (stmt.column_index_map) |i| {
-                    if (i == placeholder) {
+                inline for (column_bindings, 0..) |binding, i| {
+                    if (stmt.column_index_map[i] == placeholder and binding.default_value == null) {
                         return error.MissingColumn;
                     }
                 }
+
+                // for (stmt.column_index_map) |i| {
+                //     if (i == placeholder) {
+                //         return error.MissingColumn;
+                //     }
+                // }
             }
 
             return stmt;
@@ -209,7 +215,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
 
         pub fn step(stmt: Self) !?Result {
             switch (c.sqlite3_step(stmt.ptr)) {
-                c.SQLITE_ROW => return try stmt.row(),
+                c.SQLITE_ROW => return try stmt.parseRow(),
                 c.SQLITE_DONE => return null,
                 else => |code| {
                     // sqlite3_reset returns the same code we already have
@@ -229,7 +235,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             inline for (param_bindings, 0..) |binding, i| {
                 const idx = stmt.param_index_map[i];
                 if (binding.nullable) {
-                    if (@field(params, binding.name)) |value| {
+                    if (@field(params, binding.field.name)) |value| {
                         switch (binding.type) {
                             .int32 => try stmt.bindInt32(idx, @intCast(value)),
                             .int64 => try stmt.bindInt64(idx, @intCast(value)),
@@ -241,7 +247,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                         try stmt.bindNull(idx);
                     }
                 } else {
-                    const value = @field(params, binding.name);
+                    const value = @field(params, binding.field.name);
                     switch (binding.type) {
                         .int32 => try stmt.bindInt32(idx, @intCast(value)),
                         .int64 => try stmt.bindInt64(idx, @intCast(value)),
@@ -281,65 +287,75 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             try errors.throw(c.sqlite3_bind_text64(stmt.ptr, idx, ptr, @intCast(len), c.SQLITE_STATIC, c.SQLITE_UTF8));
         }
 
-        fn row(stmt: Self) !Result {
+        fn parseRow(stmt: Self) !Result {
             var result: Result = undefined;
 
             inline for (column_bindings, 0..) |binding, i| {
                 const n = stmt.column_index_map[i];
 
-                switch (c.sqlite3_column_type(stmt.ptr, n)) {
-                    c.SQLITE_NULL => if (binding.nullable) {
-                        @field(result, binding.name) = null;
+                if (n == placeholder) {
+                    // default value
+                    if (binding.default_value) |ptr| {
+                        const typed_ptr: *const binding.field.type = @alignCast(@ptrCast(ptr));
+                        @field(result, binding.field.name) = typed_ptr.*;
                     } else {
-                        return error.InvalidColumnType;
-                    },
-
-                    c.SQLITE_INTEGER => switch (binding.type) {
-                        .int32 => |info| {
-                            const value = stmt.columnInt32(n);
-                            switch (info.signedness) {
-                                .signed => {},
-                                .unsigned => {
-                                    if (value < 0) {
-                                        return error.IntegerOutOfRange;
-                                    }
-                                },
-                            }
-
-                            @field(result, binding.name) = @intCast(value);
+                        return error.MissingColumn;
+                    }
+                } else {
+                    switch (c.sqlite3_column_type(stmt.ptr, n)) {
+                        c.SQLITE_NULL => if (binding.nullable) {
+                            @field(result, binding.field.name) = null;
+                        } else {
+                            return error.InvalidColumnType;
                         },
-                        .int64 => |info| {
-                            const value = stmt.columnInt64(n);
-                            switch (info.signedness) {
-                                .signed => {},
-                                .unsigned => {
-                                    if (value < 0) {
-                                        return error.IntegerOutOfRange;
-                                    }
-                                },
-                            }
 
-                            @field(result, binding.name) = @intCast(value);
+                        c.SQLITE_INTEGER => switch (binding.type) {
+                            .int32 => |info| {
+                                const value = stmt.columnInt32(n);
+                                switch (info.signedness) {
+                                    .signed => {},
+                                    .unsigned => {
+                                        if (value < 0) {
+                                            return error.IntegerOutOfRange;
+                                        }
+                                    },
+                                }
+
+                                @field(result, binding.field.name) = @intCast(value);
+                            },
+                            .int64 => |info| {
+                                const value = stmt.columnInt64(n);
+                                switch (info.signedness) {
+                                    .signed => {},
+                                    .unsigned => {
+                                        if (value < 0) {
+                                            return error.IntegerOutOfRange;
+                                        }
+                                    },
+                                }
+
+                                @field(result, binding.field.name) = @intCast(value);
+                            },
+                            else => return error.InvalidColumnType,
                         },
-                        else => return error.InvalidColumnType,
-                    },
 
-                    c.SQLITE_FLOAT => switch (binding.type) {
-                        .float64 => @field(result, binding.name) = @floatCast(stmt.columnFloat64(n)),
-                        else => return error.InvalidColumnType,
-                    },
+                        c.SQLITE_FLOAT => switch (binding.type) {
+                            .float64 => @field(result, binding.field.name) = @floatCast(stmt.columnFloat64(n)),
+                            else => return error.InvalidColumnType,
+                        },
 
-                    c.SQLITE_BLOB => switch (binding.type) {
-                        .blob => @field(result, binding.name) = stmt.columnBlob(n),
-                        else => return error.InvalidColumnType,
-                    },
+                        c.SQLITE_BLOB => switch (binding.type) {
+                            .blob => @field(result, binding.field.name) = stmt.columnBlob(n),
+                            else => return error.InvalidColumnType,
+                        },
 
-                    c.SQLITE_TEXT => switch (binding.type) {
-                        .text => @field(result, binding.name) = stmt.columnText(n),
-                        else => return error.InvalidColumnType,
-                    },
+                        c.SQLITE_TEXT => switch (binding.type) {
+                            .text => @field(result, binding.field.name) = stmt.columnText(n),
+                            else => return error.InvalidColumnType,
+                        },
 
-                    else => @panic("internal SQLite error"),
+                        else => @panic("internal SQLite error"),
+                    }
                 }
             }
 
@@ -412,32 +428,10 @@ const Binding = struct {
         }
     };
 
-    // pub const Kind = enum {
-    //     int32,
-    //     int64,
-    //     float64,
-    //     blob,
-    //     text,
-
-    //     pub fn parse(comptime T: type) Kind {
-    //         return switch (T) {
-    //             Blob => .blob,
-    //             Text => .text,
-    //             else => switch (@typeInfo(T)) {
-    //                 .Int => |info| switch (info.signedness) {
-    //                     .signed => if (info.bits <= 32) .int32 else .int64,
-    //                     .unsigned => if (info.bits <= 31) .int32 else .int64,
-    //                 },
-    //                 .Float => .float64,
-    //                 else => @compileError("invalid binding type"),
-    //             },
-    //         };
-    //     }
-    // };
-
-    name: []const u8,
+    field: std.builtin.Type.StructField,
     type: Type,
     nullable: bool,
+    default_value: ?*const anyopaque,
 
     pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.fields.len]Binding {
         var bindings: [info.fields.len]Binding = undefined;
@@ -451,14 +445,16 @@ const Binding = struct {
     pub fn parseField(comptime field: std.builtin.Type.StructField) Binding {
         return switch (@typeInfo(field.type)) {
             .Optional => |field_type| Binding{
-                .name = field.name,
+                .field = field,
                 .type = Type.parse(field_type.child),
                 .nullable = true,
+                .default_value = field.default_value,
             },
             else => Binding{
-                .name = field.name,
+                .field = field,
                 .type = Type.parse(field.type),
                 .nullable = false,
+                .default_value = field.default_value,
             },
         };
     }

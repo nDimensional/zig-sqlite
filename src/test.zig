@@ -179,6 +179,25 @@ test "deserialize" {
     try std.testing.expectEqualSlices(User, &.{ .{ .id = 0 }, .{ .id = 1 } }, rows.items);
 }
 
+test "default result fields" {
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
+
+    const Params = struct {};
+    const Result = struct { id: u32, foo: u32 = 8 };
+
+    try db.exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT)", .{});
+    try db.exec("INSERT INTO users(id) VALUES (:id)", .{ .id = @as(u32, 9) });
+
+    const select_users = try db.prepare(Params, Result, "SELECT id FROM users");
+    try select_users.bind(.{});
+    defer select_users.reset();
+
+    const user = try select_users.step() orelse return error.NotFound;
+    try std.testing.expectEqual(9, user.id);
+    try std.testing.expectEqual(8, user.foo);
+}
+
 fn open(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) !sqlite.Database {
     const path_dir = try dir.realpathAlloc(allocator, ".");
     defer allocator.free(path_dir);
