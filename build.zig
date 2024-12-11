@@ -60,6 +60,7 @@ pub fn build(b: *std.Build) void {
 
     // Tests
     const tests = b.addTest(.{ .root_source_file = b.path("src/test.zig") });
+    tests.linkLibC();
     tests.addIncludePath(sqlite_amalgamation.path("."));
     tests.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
 
