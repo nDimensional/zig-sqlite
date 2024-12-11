@@ -77,13 +77,13 @@ pub const Database = struct {
 
 pub fn Statement(comptime Params: type, comptime Result: type) type {
     const param_bindings = switch (@typeInfo(Params)) {
-        .Struct => |info| Binding.parseStruct(info),
+        .@"struct" => |info| Binding.parseStruct(info),
         else => @compileError("Params type must be a struct"),
     };
 
     const column_bindings = switch (@typeInfo(Result)) {
-        .Void => .{},
-        .Struct => |info| Binding.parseStruct(info),
+        .void => .{},
+        .@"struct" => |info| Binding.parseStruct(info),
         else => @compileError("Result type must be a struct or void"),
     };
 
@@ -198,7 +198,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
 
         pub fn exec(stmt: Self, params: Params) !void {
             switch (@typeInfo(Result)) {
-                .Void => {},
+                .void => {},
                 else => @compileError("only void Result types can call .exec"),
             }
 
@@ -401,11 +401,11 @@ const Binding = struct {
                 Blob => .{ .blob = {} },
                 Text => .{ .text = {} },
                 else => switch (@typeInfo(T)) {
-                    .Int => |info| switch (info.signedness) {
+                    .int => |info| switch (info.signedness) {
                         .signed => if (info.bits <= 32) .{ .int32 = info } else .{ .int64 = info },
                         .unsigned => if (info.bits <= 31) .{ .int32 = info } else .{ .int64 = info },
                     },
-                    .Float => |info| .{ .float64 = info },
+                    .float => |info| .{ .float64 = info },
                     else => @compileError("invalid binding type"),
                 },
             };
@@ -424,11 +424,11 @@ const Binding = struct {
     //             Blob => .blob,
     //             Text => .text,
     //             else => switch (@typeInfo(T)) {
-    //                 .Int => |info| switch (info.signedness) {
+    //                 .int => |info| switch (info.signedness) {
     //                     .signed => if (info.bits <= 32) .int32 else .int64,
     //                     .unsigned => if (info.bits <= 31) .int32 else .int64,
     //                 },
-    //                 .Float => .float64,
+    //                 .float => .float64,
     //                 else => @compileError("invalid binding type"),
     //             },
     //         };
@@ -450,7 +450,7 @@ const Binding = struct {
 
     pub fn parseField(comptime field: std.builtin.Type.StructField) Binding {
         return switch (@typeInfo(field.type)) {
-            .Optional => |field_type| Binding{
+            .optional => |field_type| Binding{
                 .name = field.name,
                 .type = Type.parse(field_type.child),
                 .nullable = true,
