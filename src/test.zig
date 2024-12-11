@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const c = @import("c.zig");
 const errors = @import("errors.zig");
@@ -7,6 +8,13 @@ const sqlite = @import("sqlite.zig");
 test "open and close an in-memory database" {
     const db = try sqlite.Database.open(.{});
     defer db.close();
+}
+
+test "open and close a database in file" {
+    if (builtin.target.os.tag == .linux or builtin.target.os.tag == .macos) {
+        const db = try sqlite.Database.open(.{ .path = "/tmp/zig-sqlite-test.db" });
+        defer db.close();
+    }
 }
 
 test "insert" {
