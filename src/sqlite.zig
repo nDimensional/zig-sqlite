@@ -412,29 +412,6 @@ const Binding = struct {
         }
     };
 
-    // pub const Kind = enum {
-    //     int32,
-    //     int64,
-    //     float64,
-    //     blob,
-    //     text,
-
-    //     pub fn parse(comptime T: type) Kind {
-    //         return switch (T) {
-    //             Blob => .blob,
-    //             Text => .text,
-    //             else => switch (@typeInfo(T)) {
-    //                 .Int => |info| switch (info.signedness) {
-    //                     .signed => if (info.bits <= 32) .int32 else .int64,
-    //                     .unsigned => if (info.bits <= 31) .int32 else .int64,
-    //                 },
-    //                 .Float => .float64,
-    //                 else => @compileError("invalid binding type"),
-    //             },
-    //         };
-    //     }
-    // };
-
     name: []const u8,
     type: Type,
     nullable: bool,
