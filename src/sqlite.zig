@@ -3,23 +3,43 @@ pub const c = @import("c.zig");
 const errors = @import("errors.zig");
 
 pub const Error = errors.Error;
+
+/// A wrapper struct that binds SQLite's blob type
 pub const Blob = struct { data: []const u8 };
+
+/// A wrapper struct that binds SQLite's text type
 pub const Text = struct { data: []const u8 };
 
+/// Creates a Blob value from a byte slice
 pub fn blob(data: []const u8) Blob {
     return .{ .data = data };
 }
 
+/// Creates a Text value from a string
 pub fn text(data: []const u8) Text {
     return .{ .data = data };
 }
 
+/// Represents a connection to a SQLite database.
+///
+/// Example:
+/// ```
+/// const db = try Database.open(.{
+///     .path = "mydb.sqlite",
+///     .mode = .ReadWrite,
+///     .create = true,
+/// });
+/// defer db.close();
+/// ```
 pub const Database = struct {
     pub const Mode = enum { ReadWrite, ReadOnly };
 
     pub const Options = struct {
+        /// Path to the database file. If null, creates an in-memory database
         path: ?[*:0]const u8 = null,
+        /// Access mode for the database
         mode: Mode = .ReadWrite,
+        /// Create the database if it doesn't exist
         create: bool = true,
     };
 
@@ -411,29 +431,6 @@ const Binding = struct {
             };
         }
     };
-
-    // pub const Kind = enum {
-    //     int32,
-    //     int64,
-    //     float64,
-    //     blob,
-    //     text,
-
-    //     pub fn parse(comptime T: type) Kind {
-    //         return switch (T) {
-    //             Blob => .blob,
-    //             Text => .text,
-    //             else => switch (@typeInfo(T)) {
-    //                 .Int => |info| switch (info.signedness) {
-    //                     .signed => if (info.bits <= 32) .int32 else .int64,
-    //                     .unsigned => if (info.bits <= 31) .int32 else .int64,
-    //                 },
-    //                 .Float => .float64,
-    //                 else => @compileError("invalid binding type"),
-    //             },
-    //         };
-    //     }
-    // };
 
     name: []const u8,
     type: Type,
