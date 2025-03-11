@@ -1,7 +1,9 @@
 .{
     .paths = .{ "build.zig", "build.zig.zon", "src" },
-    .name = "zig-sqlite",
+    .name = .sqlite,
+    .fingerprint = 0xb8bb86824e8a3876,
     .version = "0.1.0-3480000",
+    .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .sqlite_amalgamation = .{
             .url = "https://www.sqlite.org/2025/sqlite-amalgamation-3480000.zip",
