@@ -187,7 +187,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                 }
 
                 inline for (column_bindings, 0..) |binding, i| {
-                    if (stmt.column_index_map[i] == placeholder and binding.default_value == null) {
+                    if (stmt.column_index_map[i] == placeholder and binding.default_value_ptr == null) {
                         return error.MissingColumn;
                     }
                 }
@@ -315,7 +315,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
 
                 if (n == placeholder) {
                     // default value
-                    if (binding.default_value) |ptr| {
+                    if (binding.default_value_ptr) |ptr| {
                         const typed_ptr: *const binding.field.type = @alignCast(@ptrCast(ptr));
                         @field(result, binding.field.name) = typed_ptr.*;
                     } else {
@@ -451,7 +451,7 @@ const Binding = struct {
     field: std.builtin.Type.StructField,
     type: Type,
     nullable: bool,
-    default_value: ?*const anyopaque,
+    default_value_ptr: ?*const anyopaque,
 
     pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.fields.len]Binding {
         var bindings: [info.fields.len]Binding = undefined;
@@ -464,17 +464,17 @@ const Binding = struct {
 
     pub fn parseField(comptime field: std.builtin.Type.StructField) Binding {
         return switch (@typeInfo(field.type)) {
-            .Optional => |field_type| Binding{
+            .optional => |field_type| Binding{
                 .field = field,
                 .type = Type.parse(field_type.child),
                 .nullable = true,
-                .default_value = field.default_value,
+                .default_value_ptr = field.default_value_ptr,
             },
             else => Binding{
                 .field = field,
                 .type = Type.parse(field.type),
                 .nullable = false,
-                .default_value = field.default_value,
+                .default_value_ptr = field.default_value_ptr,
             },
         };
     }
