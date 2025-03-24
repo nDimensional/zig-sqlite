@@ -1,11 +1,13 @@
 .{
     .paths = .{ "build.zig", "build.zig.zon", "src" },
-    .name = "zig-sqlite",
-    .version = "0.1.0-3460100",
+    .name = .sqlite,
+    .fingerprint = 0xb8bb86824e8a3876,
+    .version = "0.2.0-3490100",
+    .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .sqlite_amalgamation = .{
-            .url = "https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip",
-            .hash = "12206bc219bf56b927469c7d43f53c23fe2801c8158800f8613a783956998b7fc37f",
+            .url = "https://www.sqlite.org/2025/sqlite-amalgamation-3490100.zip",
+            .hash = "N-V-__8AABOipwB_ROwW0ffosJ3Cc7xoq4Vr6yMzlaQ57vCP",
         },
     },
 }
