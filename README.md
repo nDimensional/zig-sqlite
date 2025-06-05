@@ -16,17 +16,9 @@ Simple, low-level, explicitly-typed SQLite bindings for Zig.
 
 This library uses and requires Zig version `0.14.0` or later.
 
-Add the dependency to `build.zig.zon`:
-
-```zig
-.{
-    .dependencies = .{
-        .sqlite = .{
-            .url = "https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.2.1-3490100.tar.gz",
-            // .hash = "",
-        },
-    },
-}
+```
+zig fetch --save=sqlite \
+  https://github.com/nDimensional/zig-sqlite/archive/refs/tags/0.2.1-3500000.tar.gz
 ```
 
 Then add `sqlite` as an import to your root modules in `build.zig`:
