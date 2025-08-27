@@ -1,5 +1,5 @@
 const std = @import("std");
-pub const c = @import("c.zig");
+const c = @cImport(@cInclude("sqlite3.h"));
 const errors = @import("errors.zig");
 
 pub const Error = errors.Error;
@@ -316,7 +316,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                 if (n == placeholder) {
                     // default value
                     if (binding.default_value_ptr) |ptr| {
-                        const typed_ptr: *const binding.field.type = @alignCast(@ptrCast(ptr));
+                        const typed_ptr: *const binding.field.type = @ptrCast(@alignCast(ptr));
                         @field(result, binding.field.name) = typed_ptr.*;
                     } else {
                         return error.MissingColumn;

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const c = @import("c.zig");
+const c = @cImport(@cInclude("sqlite3.h"));
 const errors = @import("errors.zig");
 const sqlite = @import("sqlite.zig");
 
@@ -164,8 +164,8 @@ test "deserialize" {
     defer db2.close();
 
     const User = struct { id: usize };
-    var rows = std.ArrayList(User).init(allocator);
-    defer rows.deinit();
+    var rows = std.ArrayList(User){};
+    defer rows.deinit(allocator);
 
     const stmt = try db2.prepare(struct {}, User, "SELECT id FROM users");
     defer stmt.finalize();
@@ -173,7 +173,7 @@ test "deserialize" {
     try stmt.bind(.{});
     defer stmt.reset();
     while (try stmt.step()) |row| {
-        try rows.append(row);
+        try rows.append(allocator, row);
     }
 
     try std.testing.expectEqualSlices(User, &.{ .{ .id = 0 }, .{ .id = 1 } }, rows.items);
