@@ -1,6 +1,7 @@
 const std = @import("std");
-const c = @cImport(@cInclude("sqlite3.h"));
 const errors = @import("errors.zig");
+
+pub const c = @import("c.zig").c;
 
 pub const Error = errors.Error;
 

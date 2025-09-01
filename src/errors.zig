@@ -1,4 +1,4 @@
-const c = @cImport(@cInclude("sqlite3.h"));
+const c = @import("c.zig").c;
 
 pub const Error = error{
     // Generic error
