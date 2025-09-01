@@ -84,7 +84,7 @@ pub const Database = struct {
         };
     }
 
-    pub fn prepare(db: Database, comptime Params: type, comptime Result: type, sql: []const u8) !Statement(Params, Result) {
+    pub inline fn prepare(db: Database, comptime Params: type, comptime Result: type, sql: []const u8) !Statement(Params, Result) {
         return try Statement(Params, Result).prepare(db, sql);
     }
 
@@ -93,6 +93,10 @@ pub const Database = struct {
         defer stmt.finalize();
 
         try stmt.exec(params);
+    }
+
+    pub inline fn errmsg(db: Database) ?[*:0]const u8 {
+        return c.sqlite3_errmsg(db.ptr);
     }
 };
 

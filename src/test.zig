@@ -198,6 +198,22 @@ test "default result fields" {
     try std.testing.expectEqual(8, user.foo);
 }
 
+test "errmsg" {
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
+
+    const Params = struct {};
+    const Result = struct { id: u32, foo: u32 = 8 };
+
+    try db.exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT)", .{});
+
+    try std.testing.expectError(sqlite.Error.SQLITE_ERROR, db.prepare(Params, Result, "FJDKLSFJDKSL"));
+    const errmsg = db.errmsg() orelse return error.NOERR;
+    try std.testing.expectEqualSlices(u8,
+        \\near "FJDKLSFJDKSL": syntax error
+    , std.mem.span(errmsg));
+}
+
 fn open(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) !sqlite.Database {
     const path_dir = try dir.realpathAlloc(allocator, ".");
     defer allocator.free(path_dir);
