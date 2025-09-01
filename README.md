@@ -19,7 +19,7 @@ This library uses and requires Zig version `0.15.1` or later.
 
 ```
 zig fetch --save=sqlite \
-  https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.3.1-3500400.tar.gz
+  https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.3.2-3500400.tar.gz
 ```
 
 Then add `sqlite` as an import to your root modules in `build.zig`:
