@@ -8,6 +8,7 @@ Simple, low-level, explicitly-typed SQLite bindings for Zig.
 - [Usage](#usage)
   - [Methods](#methods)
   - [Queries](#queries)
+  - [Errors](#errors)
 - [Notes](#notes)
 - [Build options](#build-options)
 - [License](#license)
@@ -129,6 +130,10 @@ defer select.finalize();
 ```
 
 Text and blob values must not be retained across steps. **You are responsible for copying them.**
+
+### Errors
+
+The basic sqlite errors (`SQLITE_ERROR`, `SQLITE_BUSY`, `SQLITE_CANTOPEN`, etc) are exported as a `sqlite.Error` error union. If an error has been thrown, you can access a detailed error message with `db.errmsg(): ?[*:0]const u8`.
 
 ## Notes
 
