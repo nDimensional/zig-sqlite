@@ -15,11 +15,11 @@ Simple, low-level, explicitly-typed SQLite bindings for Zig.
 
 ## Installation
 
-This library uses and requires Zig version `0.15.1` or later.
+This library is built and tested with Zig version `0.15.1`.
 
 ```
 zig fetch --save=sqlite \
-  https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.3.2-3500400.tar.gz
+  https://github.com/nDimensional/zig-sqlite/archive/refs/tags/v0.3.2-3510100.tar.gz
 ```
 
 Then add `sqlite` as an import to your root modules in `build.zig`:
