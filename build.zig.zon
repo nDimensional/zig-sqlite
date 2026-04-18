@@ -2,7 +2,7 @@
     .paths = .{ "build.zig", "build.zig.zon", "src" },
     .name = .sqlite,
     .fingerprint = 0xb8bb86824e8a3876,
-    .version = "0.3.2-3530000",
+    .version = "0.4.0-3530000",
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .sqlite_amalgamation = .{
