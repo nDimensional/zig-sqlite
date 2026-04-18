@@ -1,7 +1,10 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    var flags = std.ArrayList([]const u8){};
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    var flags: std.ArrayList([]const u8) = .empty;
     defer flags.deinit(b.allocator);
 
     const THREADSAFE = enum { SINGLETHREAD, MULTITHREAD, SERIALIZED };
@@ -53,25 +56,39 @@ pub fn build(b: *std.Build) void {
     if (b.option(bool, "SQLITE_USE_URI", "SQLITE_USE_URI") orelse false)
         flags.append(b.allocator, "-DSQLITE_USE_URI") catch @panic("OOM");
 
-    const sqlite = b.addModule("sqlite", .{ .root_source_file = b.path("src/sqlite.zig") });
     const sqlite_amalgamation = b.dependency("sqlite_amalgamation", .{});
 
-    sqlite.addIncludePath(sqlite_amalgamation.path("."));
+    // Translate sqlite3.h to a Zig module via the build system (replaces @cImport)
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = sqlite_amalgamation.path("sqlite3.h"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    translate_c.addIncludePath(sqlite_amalgamation.path("."));
+    const c_module = translate_c.createModule();
+
+    const sqlite = b.addModule("sqlite", .{
+        .root_source_file = b.path("src/sqlite.zig"),
+        .imports = &.{
+            .{ .name = "c", .module = c_module },
+        },
+    });
     sqlite.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
 
     // Tests
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
     const tests = b.addTest(.{
         .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,
             .root_source_file = b.path("src/test.zig"),
+            .imports = &.{
+                .{ .name = "c", .module = c_module },
+            },
         }),
     });
 
-    tests.addIncludePath(sqlite_amalgamation.path("."));
-    tests.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
+    tests.root_module.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
 
     const run_tests = b.addRunArtifact(tests);
 

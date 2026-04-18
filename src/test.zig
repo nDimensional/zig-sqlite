@@ -1,6 +1,5 @@
 const std = @import("std");
 
-const c = @cImport(@cInclude("sqlite3.h"));
 const errors = @import("errors.zig");
 const sqlite = @import("sqlite.zig");
 
@@ -143,28 +142,30 @@ test "example" {
 
 test "deserialize" {
     const allocator = std.heap.c_allocator;
+    const io = std.testing.io;
 
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
 
-    const db1 = try open(allocator, tmp.dir, "db.sqlite");
+    // Construct a CWD-relative path for sqlite to open
+    var path_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const db_path = std.fmt.bufPrintZ(&path_buf, ".zig-cache/tmp/{s}/db.sqlite", .{&tmp.sub_path}) catch @panic("path too long");
+
+    const db1 = try sqlite.Database.open(.{ .path = db_path });
     defer db1.close();
 
     try db1.exec("CREATE TABLE users (id INTEGER PRIMARY KEY)", .{});
     try db1.exec("INSERT INTO users VALUES (:id)", .{ .id = @as(usize, 0) });
     try db1.exec("INSERT INTO users VALUES (:id)", .{ .id = @as(usize, 1) });
 
-    const file = try tmp.dir.openFile("db.sqlite", .{});
-    defer file.close();
-
-    const data = try file.readToEndAlloc(allocator, 4096 * 8);
-    defer allocator.free(data);
+    var file_buf: [4096 * 8]u8 = undefined;
+    const data = try tmp.dir.readFile(io, "db.sqlite", &file_buf);
 
     const db2 = try sqlite.Database.import(data);
     defer db2.close();
 
     const User = struct { id: usize };
-    var rows = std.ArrayList(User){};
+    var rows: std.ArrayList(User) = .empty;
     defer rows.deinit(allocator);
 
     const stmt = try db2.prepare(struct {}, User, "SELECT id FROM users");
@@ -214,12 +215,3 @@ test "errmsg" {
     , std.mem.span(errmsg));
 }
 
-fn open(allocator: std.mem.Allocator, dir: std.fs.Dir, name: []const u8) !sqlite.Database {
-    const path_dir = try dir.realpathAlloc(allocator, ".");
-    defer allocator.free(path_dir);
-
-    const path_file = try std.fs.path.joinZ(allocator, &.{ path_dir, name });
-    defer allocator.free(path_file);
-
-    return try sqlite.Database.open(.{ .path = path_file });
-}

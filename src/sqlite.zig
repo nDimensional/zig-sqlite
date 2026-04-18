@@ -1,7 +1,7 @@
 const std = @import("std");
 const errors = @import("errors.zig");
 
-pub const c = @import("c.zig").c;
+pub const c = @import("c");
 
 pub const Error = errors.Error;
 
