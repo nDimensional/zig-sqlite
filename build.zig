@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const Translator = @import("translate_c").Translator;
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -57,16 +59,18 @@ pub fn build(b: *std.Build) void {
         flags.append(b.allocator, "-DSQLITE_USE_URI") catch @panic("OOM");
 
     const sqlite_amalgamation = b.dependency("sqlite_amalgamation", .{});
+    const translate_c_dep = b.dependency("translate_c", .{});
 
-    // Translate sqlite3.h to a Zig module via the build system (replaces @cImport)
-    const translate_c = b.addTranslateC(.{
-        .root_source_file = sqlite_amalgamation.path("sqlite3.h"),
+    // Translate sqlite3.h to a Zig module via translate-c dep (replaces build system impl).
+    const t: Translator = .init(translate_c_dep, .{
+        .c_source_file = sqlite_amalgamation.path("sqlite3.h"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    translate_c.addIncludePath(sqlite_amalgamation.path("."));
-    const c_module = translate_c.createModule();
+    t.addIncludePath(sqlite_amalgamation.path("."));
+
+    const c_module = t.mod;
 
     const sqlite = b.addModule("sqlite", .{
         .root_source_file = b.path("src/sqlite.zig"),
@@ -74,7 +78,10 @@ pub fn build(b: *std.Build) void {
             .{ .name = "c", .module = c_module },
         },
     });
-    sqlite.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
+    sqlite.addCSourceFile(.{
+        .file = sqlite_amalgamation.path("sqlite3.c"),
+        .flags = flags.items,
+    });
 
     // Tests
     const tests = b.addTest(.{
@@ -88,7 +95,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    tests.root_module.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
+    tests.root_module.addCSourceFile(.{
+        .file = sqlite_amalgamation.path("sqlite3.c"),
+        .flags = flags.items,
+    });
 
     const run_tests = b.addRunArtifact(tests);
 

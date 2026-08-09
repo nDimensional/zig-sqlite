@@ -149,7 +149,12 @@ test "deserialize" {
 
     // Construct a CWD-relative path for sqlite to open
     var path_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
-    const db_path = std.fmt.bufPrintZ(&path_buf, ".zig-cache/tmp/{s}/db.sqlite", .{&tmp.sub_path}) catch @panic("path too long");
+    const db_path = std.fmt.bufPrintSentinel(
+        &path_buf,
+        ".zig-cache/tmp/{s}/db.sqlite",
+        .{&tmp.sub_path},
+        0,
+    ) catch @panic("path too long");
 
     const db1 = try sqlite.Database.open(.{ .path = db_path });
     defer db1.close();
@@ -214,4 +219,3 @@ test "errmsg" {
         \\near "FJDKLSFJDKSL": syntax error
     , std.mem.span(errmsg));
 }
-
