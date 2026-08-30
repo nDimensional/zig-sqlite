@@ -58,7 +58,6 @@ pub fn build(b: *std.Build) void {
 
     const sqlite_amalgamation = b.dependency("sqlite_amalgamation", .{});
 
-    // Translate sqlite3.h to a Zig module via the build system (replaces @cImport)
     const translate_c = b.addTranslateC(.{
         .root_source_file = sqlite_amalgamation.path("sqlite3.h"),
         .target = target,
@@ -74,7 +73,10 @@ pub fn build(b: *std.Build) void {
             .{ .name = "c", .module = c_module },
         },
     });
-    sqlite.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
+    sqlite.addCSourceFile(.{
+        .file = sqlite_amalgamation.path("sqlite3.c"),
+        .flags = flags.items,
+    });
 
     // Tests
     const tests = b.addTest(.{
@@ -88,7 +90,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    tests.root_module.addCSourceFile(.{ .file = sqlite_amalgamation.path("sqlite3.c"), .flags = flags.items });
+    tests.root_module.addCSourceFile(.{
+        .file = sqlite_amalgamation.path("sqlite3.c"),
+        .flags = flags.items,
+    });
 
     const run_tests = b.addRunArtifact(tests);
 

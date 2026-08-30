@@ -120,8 +120,8 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
         const Self = @This();
 
         ptr: ?*c.sqlite3_stmt = null,
-        param_index_map: [param_count]c_int = .{placeholder} ** param_count,
-        column_index_map: [column_count]c_int = .{placeholder} ** column_count,
+        param_index_map: [param_count]c_int = @splat(placeholder),
+        column_index_map: [column_count]c_int = @splat(placeholder),
 
         pub fn prepare(db: Database, sql: []const u8) !Self {
             var stmt = Self{};
@@ -453,21 +453,41 @@ const Binding = struct {
         }
     };
 
-    field: std.builtin.Type.StructField,
+    /// This is pulled from builtin.zig/lang.zig in the std library since they
+    /// are moving towards using a struct of arrays pattern in 0.17.0.
+    ///
+    /// Alignment and comptime status are not read so I dropped that field.
+    const StructField = struct {
+        name: [:0]const u8,
+        type: type,
+        /// The type of the default value is the type of this struct field, which
+        /// is the value of the `type` field in this struct. However there is no
+        /// way to refer to that type here, so we use `*const anyopaque`.
+        /// See also: `defaultValue`.
+        default_value_ptr: ?*const anyopaque,
+    };
+
+    field: StructField,
     type: Type,
     nullable: bool,
     default_value_ptr: ?*const anyopaque,
 
-    pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.fields.len]Binding {
-        var bindings: [info.fields.len]Binding = undefined;
-        inline for (info.fields, 0..) |field, i| {
+    pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.field_names.len]Binding {
+        var bindings: [info.field_names.len]Binding = undefined;
+        inline for (0..info.field_names.len) |i| {
+            const field = StructField{
+                .name = info.field_names[i],
+                .type = info.field_types[i],
+                .default_value_ptr = info.field_attrs[i].default_value_ptr,
+            };
+
             bindings[i] = parseField(field);
         }
 
         return bindings;
     }
 
-    pub fn parseField(comptime field: std.builtin.Type.StructField) Binding {
+    pub fn parseField(comptime field: StructField) Binding {
         return switch (@typeInfo(field.type)) {
             .optional => |field_type| Binding{
                 .field = field,
