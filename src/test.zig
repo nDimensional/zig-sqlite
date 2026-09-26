@@ -215,3 +215,80 @@ test "errmsg" {
     , std.mem.span(errmsg));
 }
 
+test "anonymous parameters" {
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
+
+    try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
+    const UserParams = @Tuple(&.{ sqlite.Text, ?f32 });
+    const User = struct { id: sqlite.Text, age: ?f32 };
+
+    {
+        const insert = try db.prepare(UserParams, void, "INSERT INTO users VALUES (?, ?)");
+        defer insert.finalize();
+
+        try insert.exec(.{ sqlite.text("a"), 5 });
+        try insert.exec(.{ sqlite.text("b"), 7 });
+        try insert.exec(.{ sqlite.text("c"), null });
+    }
+
+    {
+        const select = try db.prepare(@Tuple(&.{ sqlite.Text }), User, "SELECT id, age FROM users WHERE id = ?1");
+        defer select.finalize();
+
+        {
+            try select.bind(.{ sqlite.text("a") });
+            defer select.reset();
+
+            if (try select.step()) |user| {
+                try std.testing.expectEqualSlices(u8, "a", user.id.data);
+                try std.testing.expectEqual(@as(?f32, 5), user.age);
+            } else try std.testing.expect(false);
+        }
+
+        {
+            try select.bind(.{ sqlite.text("b") });
+            defer select.reset();
+
+            if (try select.step()) |user| {
+                try std.testing.expectEqualSlices(u8, "b", user.id.data);
+                try std.testing.expectEqual(@as(?f32, 7), user.age);
+            } else try std.testing.expect(false);
+        }
+
+        {
+            try select.bind(.{ sqlite.text("c") });
+            defer select.reset();
+
+            if (try select.step()) |user| {
+                try std.testing.expectEqualSlices(u8, "c", user.id.data);
+                try std.testing.expectEqual(@as(?f32, null), user.age);
+            } else try std.testing.expect(false);
+
+            try std.testing.expectEqual(@as(?User, null), try select.step());
+        }
+    }
+}
+
+test "incorret anonymous parameters" {
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
+
+    try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
+    const User = struct { id: sqlite.Text, age: ?f32 };
+
+    try std.testing.expectError(
+        error.InvalidParameter,
+        db.prepare(@Tuple(&.{ sqlite.Text }), void, "INSERT INTO users VALUES (?, ?)"),
+    );
+
+    try std.testing.expectError(
+        error.InvalidParameter,
+        db.prepare(@Tuple(&.{ sqlite.Text, f32 }), User, "SELECT id, age FROM users WHERE id = ?1"),
+    ); 
+
+    try std.testing.expectError(
+        error.InvalidParameter,
+        db.prepare(@Tuple(&.{}), void, "INSERT INTO users VALUES (?, ?)"),
+    ); 
+}
