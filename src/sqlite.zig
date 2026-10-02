@@ -464,6 +464,9 @@ const Binding = struct {
                         .unsigned => if (info.bits <= 31) .{ .int32 = info } else .{ .int64 = info },
                     },
                     .float => |info| .{ .float64 = info },
+                    // e.g. untyped literals passed to Database.exec
+                    .comptime_int => .{ .int64 = @typeInfo(i64).int },
+                    .comptime_float => .{ .float64 = @typeInfo(f64).float },
                     else => @compileError("invalid binding type"),
                 },
             };

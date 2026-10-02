@@ -302,3 +302,33 @@ test "incorrect anonymous parameters" {
         db.prepare(struct { sqlite.Text, f32 }, void, "INSERT INTO users VALUES (?, $age)"),
     );
 }
+
+test "untyped literal parameters" {
+    const db = try sqlite.Database.open(.{});
+    defer db.close();
+
+    try db.exec("CREATE TABLE widgets(id TEXT PRIMARY KEY, count INTEGER, radius FLOAT)", .{});
+    try db.exec("INSERT INTO widgets VALUES (?, ?, ?)", .{ sqlite.text("a"), 5, 814.9318 });
+    try db.exec("INSERT INTO widgets VALUES (:id, :count, :radius)", .{ .id = sqlite.text("b"), .count = 1 << 40, .radius = -1.5 });
+
+    const Widget = struct { id: sqlite.Text, count: i64, radius: f64 };
+    const select = try db.prepare(struct {}, Widget, "SELECT id, count, radius FROM widgets ORDER BY id");
+    defer select.finalize();
+
+    try select.bind(.{});
+    defer select.reset();
+
+    if (try select.step()) |widget| {
+        try std.testing.expectEqualSlices(u8, "a", widget.id.data);
+        try std.testing.expectEqual(@as(i64, 5), widget.count);
+        try std.testing.expectEqual(@as(f64, 814.9318), widget.radius);
+    } else try std.testing.expect(false);
+
+    if (try select.step()) |widget| {
+        try std.testing.expectEqualSlices(u8, "b", widget.id.data);
+        try std.testing.expectEqual(@as(i64, 1 << 40), widget.count);
+        try std.testing.expectEqual(@as(f64, -1.5), widget.radius);
+    } else try std.testing.expect(false);
+
+    try std.testing.expectEqual(@as(?Widget, null), try select.step());
+}
