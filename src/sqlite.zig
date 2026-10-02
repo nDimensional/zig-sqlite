@@ -112,10 +112,14 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
         else => @compileError("Result type must be a struct or void"),
     };
 
+    const is_params_tuple = switch (@typeInfo(Params)) {
+        .@"struct" => |info| info.is_tuple,
+        else => false,
+    };
+
     const param_count = param_bindings.len;
     const column_count = column_bindings.len;
     const placeholder: c_int = -1;
-
     return struct {
         const Self = @This();
 
@@ -133,10 +137,26 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             };
 
             // Populate stmt.param_index_map
-            {
+            blk: {
                 const count = c.sqlite3_bind_parameter_count(stmt.ptr);
-
                 var idx: c_int = 1;
+                
+                if (is_params_tuple) {
+                    if (param_bindings.len !=  count) {
+                        return error.InvalidParameter;
+                    }
+
+                    if (param_bindings.len == 0) {
+                        break :blk;
+                    }
+
+                    while (idx <= count) : (idx += 1) {
+                        const index: u8 = @intCast(idx - 1);
+                        stmt.param_index_map[index] = idx;
+                    }
+                    break :blk;
+                } 
+            
                 params: while (idx <= count) : (idx += 1) {
                     const parameter_name = c.sqlite3_bind_parameter_name(stmt.ptr, idx);
                     if (parameter_name == null) {
@@ -164,6 +184,8 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
 
                     return error.MissingParameter;
                 }
+
+                break :blk;
             }
 
             // Populate stmt.column_index_map
@@ -197,11 +219,6 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                     }
                 }
 
-                // for (stmt.column_index_map) |i| {
-                //     if (i == placeholder) {
-                //         return error.MissingColumn;
-                //     }
-                // }
             }
 
             return stmt;
