@@ -233,11 +233,11 @@ test "anonymous parameters" {
     }
 
     {
-        const select = try db.prepare(@Tuple(&.{ sqlite.Text }), User, "SELECT id, age FROM users WHERE id = ?1");
+        const select = try db.prepare(@Tuple(&.{sqlite.Text}), User, "SELECT id, age FROM users WHERE id = ?1");
         defer select.finalize();
 
         {
-            try select.bind(.{ sqlite.text("a") });
+            try select.bind(.{sqlite.text("a")});
             defer select.reset();
 
             if (try select.step()) |user| {
@@ -247,7 +247,7 @@ test "anonymous parameters" {
         }
 
         {
-            try select.bind(.{ sqlite.text("b") });
+            try select.bind(.{sqlite.text("b")});
             defer select.reset();
 
             if (try select.step()) |user| {
@@ -257,7 +257,7 @@ test "anonymous parameters" {
         }
 
         {
-            try select.bind(.{ sqlite.text("c") });
+            try select.bind(.{sqlite.text("c")});
             defer select.reset();
 
             if (try select.step()) |user| {
@@ -279,13 +279,13 @@ test "incorret anonymous parameters" {
 
     try std.testing.expectError(
         error.InvalidParameter,
-        db.prepare(@Tuple(&.{ sqlite.Text }), void, "INSERT INTO users VALUES (?, ?)"),
+        db.prepare(@Tuple(&.{sqlite.Text}), void, "INSERT INTO users VALUES (?, ?)"),
     );
 
     try std.testing.expectError(
         error.InvalidParameter,
         db.prepare(@Tuple(&.{ sqlite.Text, f32 }), User, "SELECT id, age FROM users WHERE id = ?1"),
-    ); 
+    );
 
     try std.testing.expectError(
         error.InvalidParameter,

@@ -120,6 +120,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
     const param_count = param_bindings.len;
     const column_count = column_bindings.len;
     const placeholder: c_int = -1;
+
     return struct {
         const Self = @This();
 
@@ -142,7 +143,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
 
                 var idx: c_int = 1;
                 if (is_params_tuple) {
-                    if (param_bindings.len !=  count) {
+                    if (param_bindings.len != count) {
                         return error.InvalidParameter;
                     }
 
@@ -153,8 +154,7 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                             return error.InvalidParameter;
                         }
 
-                        const index: u8 = @intCast(idx - 1);
-                        stmt.param_index_map[index] = idx;
+                        stmt.param_index_map[@intCast(idx - 1)] = idx;
                     }
                 } else {
                     params: while (idx <= count) : (idx += 1) {
@@ -217,7 +217,6 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                         return error.MissingColumn;
                     }
                 }
-
             }
 
             return stmt;
