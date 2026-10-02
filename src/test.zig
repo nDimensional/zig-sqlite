@@ -290,5 +290,15 @@ test "incorret anonymous parameters" {
     try std.testing.expectError(
         error.InvalidParameter,
         db.prepare(@Tuple(&.{}), void, "INSERT INTO users VALUES (?, ?)"),
-    ); 
+    );
+
+    try std.testing.expectError(
+        error.InvalidParameter,
+        db.prepare(@Tuple(&.{ sqlite.Text, f32 }), void, "INSERT INTO users VALUES (:id, :age)"),
+    );
+
+    try std.testing.expectError(
+        error.InvalidParameter,
+        db.prepare(@Tuple(&.{ sqlite.Text, f32 }), void, "INSERT INTO users VALUES (?, $age)"),
+    );
 }

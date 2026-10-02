@@ -151,6 +151,12 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                     }
 
                     while (idx <= count) : (idx += 1) {
+                        // anonymous (?) and numbered (?NNN) parameters only
+                        const parameter_name = c.sqlite3_bind_parameter_name(stmt.ptr, idx);
+                        if (parameter_name != null and parameter_name[0] != '?') {
+                            return error.InvalidParameter;
+                        }
+
                         const index: u8 = @intCast(idx - 1);
                         stmt.param_index_map[index] = idx;
                     }
