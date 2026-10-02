@@ -125,8 +125,8 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
         const Self = @This();
 
         ptr: ?*c.sqlite3_stmt = null,
-        param_index_map: [param_count]c_int = .{placeholder} ** param_count,
-        column_index_map: [column_count]c_int = .{placeholder} ** column_count,
+        param_index_map: [param_count]c_int = @splat(placeholder),
+        column_index_map: [column_count]c_int = @splat(placeholder),
 
         pub fn prepare(db: Database, sql: []const u8) !Self {
             var stmt = Self{};
@@ -141,22 +141,24 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             {
                 const count = c.sqlite3_bind_parameter_count(stmt.ptr);
 
-                var idx: c_int = 1;
                 if (is_params_tuple) {
                     if (param_bindings.len != count) {
                         return error.InvalidParameter;
                     }
 
-                    while (idx <= count) : (idx += 1) {
+                    inline for (0..param_count) |i| {
+                        const idx: c_int = i + 1;
+
                         // anonymous (?) and numbered (?NNN) parameters only
                         const parameter_name = c.sqlite3_bind_parameter_name(stmt.ptr, idx);
                         if (parameter_name != null and parameter_name[0] != '?') {
                             return error.InvalidParameter;
                         }
 
-                        stmt.param_index_map[@intCast(idx - 1)] = idx;
+                        stmt.param_index_map[i] = idx;
                     }
                 } else {
+                    var idx: c_int = 1;
                     params: while (idx <= count) : (idx += 1) {
                         const parameter_name = c.sqlite3_bind_parameter_name(stmt.ptr, idx);
                         if (parameter_name == null) {
@@ -468,33 +470,38 @@ const Binding = struct {
         }
     };
 
-    field: std.builtin.Type.StructField,
+    const Field = struct {
+        name: [:0]const u8,
+        type: type,
+    };
+
+    field: Field,
     type: Type,
     nullable: bool,
     default_value_ptr: ?*const anyopaque,
 
-    pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.fields.len]Binding {
-        var bindings: [info.fields.len]Binding = undefined;
-        inline for (info.fields, 0..) |field, i| {
-            bindings[i] = parseField(field);
+    pub fn parseStruct(comptime info: std.builtin.Type.Struct) [info.field_names.len]Binding {
+        var bindings: [info.field_names.len]Binding = undefined;
+        inline for (info.field_names, info.field_types, info.field_attrs, 0..) |name, field_type, attrs, i| {
+            bindings[i] = parseField(.{ .name = name, .type = field_type }, attrs.default_value_ptr);
         }
 
         return bindings;
     }
 
-    pub fn parseField(comptime field: std.builtin.Type.StructField) Binding {
+    pub fn parseField(comptime field: Field, comptime default_value_ptr: ?*const anyopaque) Binding {
         return switch (@typeInfo(field.type)) {
             .optional => |field_type| Binding{
                 .field = field,
                 .type = Type.parse(field_type.child),
                 .nullable = true,
-                .default_value_ptr = field.default_value_ptr,
+                .default_value_ptr = default_value_ptr,
             },
             else => Binding{
                 .field = field,
                 .type = Type.parse(field.type),
                 .nullable = false,
-                .default_value_ptr = field.default_value_ptr,
+                .default_value_ptr = default_value_ptr,
             },
         };
     }

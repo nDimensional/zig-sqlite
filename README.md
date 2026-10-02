@@ -15,7 +15,7 @@ Simple, low-level, explicitly-typed SQLite bindings for Zig.
 
 ## Installation
 
-This library is built and tested with Zig version `0.16.0`.
+This library is built and tested with Zig version `0.17.0`.
 
 ```
 zig fetch --save=sqlite \
