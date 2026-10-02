@@ -220,7 +220,7 @@ test "anonymous parameters" {
     defer db.close();
 
     try db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, age FLOAT)", .{});
-    const UserParams = @Tuple(&.{ sqlite.Text, ?f32 });
+    const UserParams = struct { sqlite.Text, ?f32 };
     const User = struct { id: sqlite.Text, age: ?f32 };
 
     {
@@ -233,7 +233,7 @@ test "anonymous parameters" {
     }
 
     {
-        const select = try db.prepare(@Tuple(&.{sqlite.Text}), User, "SELECT id, age FROM users WHERE id = ?1");
+        const select = try db.prepare(struct { sqlite.Text }, User, "SELECT id, age FROM users WHERE id = ?1");
         defer select.finalize();
 
         {
@@ -270,7 +270,7 @@ test "anonymous parameters" {
     }
 }
 
-test "incorret anonymous parameters" {
+test "incorrect anonymous parameters" {
     const db = try sqlite.Database.open(.{});
     defer db.close();
 
@@ -279,26 +279,26 @@ test "incorret anonymous parameters" {
 
     try std.testing.expectError(
         error.InvalidParameter,
-        db.prepare(@Tuple(&.{sqlite.Text}), void, "INSERT INTO users VALUES (?, ?)"),
+        db.prepare(struct { sqlite.Text }, void, "INSERT INTO users VALUES (?, ?)"),
     );
 
     try std.testing.expectError(
         error.InvalidParameter,
-        db.prepare(@Tuple(&.{ sqlite.Text, f32 }), User, "SELECT id, age FROM users WHERE id = ?1"),
+        db.prepare(struct { sqlite.Text, f32 }, User, "SELECT id, age FROM users WHERE id = ?1"),
     );
 
     try std.testing.expectError(
         error.InvalidParameter,
-        db.prepare(@Tuple(&.{}), void, "INSERT INTO users VALUES (?, ?)"),
+        db.prepare(@TypeOf(.{}), void, "INSERT INTO users VALUES (?, ?)"),
     );
 
     try std.testing.expectError(
         error.InvalidParameter,
-        db.prepare(@Tuple(&.{ sqlite.Text, f32 }), void, "INSERT INTO users VALUES (:id, :age)"),
+        db.prepare(struct { sqlite.Text, f32 }, void, "INSERT INTO users VALUES (:id, :age)"),
     );
 
     try std.testing.expectError(
         error.InvalidParameter,
-        db.prepare(@Tuple(&.{ sqlite.Text, f32 }), void, "INSERT INTO users VALUES (?, $age)"),
+        db.prepare(struct { sqlite.Text, f32 }, void, "INSERT INTO users VALUES (?, $age)"),
     );
 }
