@@ -57,12 +57,18 @@ const sqlite = @import("sqlite");
 Execute one-off statements using `Database.exec`:
 
 ```zig
-try db.exec("CREATE TABLE users (id TEXT PRIMARY KEY, age FLOAT)", .{});
+try db.exec("CREATE TABLE widgets (id TEXT PRIMARY KEY, radius FLOAT)", .{});
+```
+
+Bind anonymous params with anonymous tuple values:
+
+```zig
+try db.exec("INSERT INTO widgets VALUES (?, ?)", .{ sqlite.text("x"), 814.9318 });
 ```
 
 Prepare statements using `Database.prepare`, and finalize them with `stmt.finalize()`. Statements must be given explicit comptime params and result types, and are typed as `sqlite.Statement(Params, Result)`.
 
-- The comptime `Params` type must be a struct whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types.
+- The comptime `Params` type must be a struct or tuple whose fields are (possibly optional) float, integer, `sqlite.Blob`, or `sqlite.Text` types. Structs must be used for named params, tuples must be used for anonymous params.
 - The comptime `Result` type must either be `void`, indicating a method that returns no data, or a struct of the same kind as param types, indicating a query that returns rows.
 
 `sqlite.Blob` and `sqlite.Text` are wrapper structs with a single field `data: []const u8`.
@@ -72,12 +78,12 @@ Prepare statements using `Database.prepare`, and finalize them with `stmt.finali
 If the `Result` type is `void`, use the `exec(params: Params): !void` method to execute the statement several times with different params.
 
 ```zig
-const User = struct { id: sqlite.Text, age: ?f32 };
-const insert = try db.prepare(User, void, "INSERT INTO users VALUES (:id, :age)");
+const Widget = struct { id: sqlite.Text, radius: ?f32 };
+const insert = try db.prepare(Widget, void, "INSERT INTO widgets VALUES (:id, :radius)");
 defer insert.finalize();
 
-try insert.exec(.{ .id = sqlite.text("a"), .age = 21 });
-try insert.exec(.{ .id = sqlite.text("b"), .age = null });
+try insert.exec(.{ .id = sqlite.text("a"), .radius = 31 });
+try insert.exec(.{ .id = sqlite.text("b"), .radius = null });
 ```
 
 ### Queries
@@ -87,11 +93,11 @@ If the `Result` type is a struct, use `stmt.bind(params)` in conjunction with `d
 > ℹ️ Every `bind` should be paired with a `reset`, just like every `prepare` is paired with a `finalize`.
 
 ```zig
-const User = struct { id: sqlite.Text, age: ?f32 };
+const Widget = struct { id: sqlite.Text, radius: ?f32 };
 const select = try db.prepare(
     struct { min: f32 },
-    User,
-    "SELECT * FROM users WHERE age >= :min",
+    Widget,
+    "SELECT * FROM widgets WHERE radius >= :min",
 );
 
 defer select.finalize();
@@ -101,10 +107,10 @@ defer select.finalize();
     try select.bind(.{ .min = 0 });
     defer select.reset();
 
-    if (try select.step()) |user| {
-        // user.id: sqlite.Text
-        // user.age: ?f32
-        std.log.info("id: {s}, age: {d}", .{ user.id.data, user.age orelse 0 });
+    if (try select.step()) |widget| {
+        // widget.id: sqlite.Text
+        // widget.radius: ?f32
+        std.log.info("id: {s}, radius: {d}", .{ widget.id.data, widget.radius orelse 0 });
     }
 }
 
@@ -113,8 +119,8 @@ defer select.finalize();
     try select.bind(.{ .min = 0 });
     defer select.reset();
 
-    while (try select.step()) |user| {
-        std.log.info("id: {s}, age: {d}", .{ user.id.data, user.age orelse 0 });
+    while (try select.step()) |widget| {
+        std.log.info("id: {s}, radius: {d}", .{ widget.id.data, widget.radius orelse 0 });
     }
 }
 
@@ -123,8 +129,8 @@ defer select.finalize();
     try select.bind(.{ .min = 21 });
     defer select.reset();
 
-    while (try select.step()) |user| {
-        std.log.info("id: {s}, age: {d}", .{ user.id.data, user.age orelse 0 });
+    while (try select.step()) |widget| {
+        std.log.info("id: {s}, radius: {d}", .{ widget.id.data, widget.radius orelse 0 });
     }
 }
 ```
