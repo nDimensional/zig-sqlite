@@ -137,17 +137,13 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
             };
 
             // Populate stmt.param_index_map
-            blk: {
+            {
                 const count = c.sqlite3_bind_parameter_count(stmt.ptr);
+
                 var idx: c_int = 1;
-                
                 if (is_params_tuple) {
                     if (param_bindings.len !=  count) {
                         return error.InvalidParameter;
-                    }
-
-                    if (param_bindings.len == 0) {
-                        break :blk;
                     }
 
                     while (idx <= count) : (idx += 1) {
@@ -160,38 +156,35 @@ pub fn Statement(comptime Params: type, comptime Result: type) type {
                         const index: u8 = @intCast(idx - 1);
                         stmt.param_index_map[index] = idx;
                     }
-                    break :blk;
-                } 
-            
-                params: while (idx <= count) : (idx += 1) {
-                    const parameter_name = c.sqlite3_bind_parameter_name(stmt.ptr, idx);
-                    if (parameter_name == null) {
-                        return error.InvalidParameter;
-                    }
+                } else {
+                    params: while (idx <= count) : (idx += 1) {
+                        const parameter_name = c.sqlite3_bind_parameter_name(stmt.ptr, idx);
+                        if (parameter_name == null) {
+                            return error.InvalidParameter;
+                        }
 
-                    const name = std.mem.span(parameter_name);
-                    if (name.len == 0) {
-                        return error.InvalidParameter;
-                    } else switch (name[0]) {
-                        ':', '$', '@' => {},
-                        else => return error.InvalidParameter,
-                    }
+                        const name = std.mem.span(parameter_name);
+                        if (name.len == 0) {
+                            return error.InvalidParameter;
+                        } else switch (name[0]) {
+                            ':', '$', '@' => {},
+                            else => return error.InvalidParameter,
+                        }
 
-                    inline for (param_bindings, 0..) |binding, i| {
-                        if (std.mem.eql(u8, binding.field.name, name[1..])) {
-                            if (stmt.param_index_map[i] == placeholder) {
-                                stmt.param_index_map[i] = idx;
-                                continue :params;
-                            } else {
-                                return error.DuplicateParameter;
+                        inline for (param_bindings, 0..) |binding, i| {
+                            if (std.mem.eql(u8, binding.field.name, name[1..])) {
+                                if (stmt.param_index_map[i] == placeholder) {
+                                    stmt.param_index_map[i] = idx;
+                                    continue :params;
+                                } else {
+                                    return error.DuplicateParameter;
+                                }
                             }
                         }
+
+                        return error.MissingParameter;
                     }
-
-                    return error.MissingParameter;
                 }
-
-                break :blk;
             }
 
             // Populate stmt.column_index_map
